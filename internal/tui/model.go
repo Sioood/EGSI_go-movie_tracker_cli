@@ -155,7 +155,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
 		if m.route == RouteMovieForm || m.route == RouteMovieDetail {
@@ -166,6 +166,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.goTo(RouteMainMenu)
 			return m, nil
 		}
+	}
+
+	switch m.route {
+	case RouteMovieForm:
+		return m.updateMovieForm(msg)
+	case RouteSettings:
+		return m.updateSettings(msg)
+	case RouteLogin:
+		return m.updateLogin(msg)
+	case RouteMovieDetail:
+		if m.reviewInput.Focused() && msg.String() != "tab" && msg.String() != "shift+tab" && msg.String() != "enter" {
+			var cmd tea.Cmd
+			m.reviewInput, cmd = m.reviewInput.Update(msg)
+			return m, cmd
+		}
+		return m.updateMovieDetail(msg)
+	}
+
+	switch msg.String() {
+	case "q":
+		return m, tea.Quit
 	case "?":
 		m.goTo(RouteHelp)
 		return m, nil
@@ -196,14 +217,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateMainMenu(msg)
 	case RouteMovieList:
 		return m.updateMovieList(msg)
-	case RouteMovieForm:
-		return m.updateMovieForm(msg)
-	case RouteSettings:
-		return m.updateSettings(msg)
-	case RouteLogin:
-		return m.updateLogin(msg)
-	case RouteMovieDetail:
-		return m.updateMovieDetail(msg)
 	default:
 		return m.updateActiveBubble(msg)
 	}

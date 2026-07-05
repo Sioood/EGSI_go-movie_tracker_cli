@@ -123,6 +123,23 @@ func TestMovieSearchAndFilters(t *testing.T) {
 	}
 }
 
+func TestTypingShortcutLettersInMovieFormDoesNotNavigate(t *testing.T) {
+	model := New(newFakeMovieService())
+	model.goTo(RouteMovieList)
+	model = press(t, model, "a")
+	assertRoute(t, model, RouteMovieForm)
+
+	model = press(t, model, "m")
+	model = press(t, model, "q")
+	model = press(t, model, "s")
+	model = press(t, model, "l")
+
+	assertRoute(t, model, RouteMovieForm)
+	if model.titleInput.Value() != "mqsl" {
+		t.Fatalf("expected shortcut letters to be typed, got %q", model.titleInput.Value())
+	}
+}
+
 func press(t *testing.T, model Model, key string) Model {
 	t.Helper()
 
