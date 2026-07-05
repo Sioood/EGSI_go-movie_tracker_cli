@@ -6,6 +6,8 @@ import (
 
 	"github.com/movietracker/movie-tracker/internal/database"
 	"github.com/movietracker/movie-tracker/internal/logging"
+	"github.com/movietracker/movie-tracker/internal/repository"
+	"github.com/movietracker/movie-tracker/internal/service"
 	"github.com/movietracker/movie-tracker/internal/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,9 +30,13 @@ func main() {
 	}
 	defer db.Close()
 
-	logger.Info("MovieTracker CLI ready", "phase", 2, "database", dbPath)
+	movieRepository := repository.NewMovieRepository(db)
+	watchEntryRepository := repository.NewWatchEntryRepository(db)
+	movieService := service.NewMovieService(movieRepository, watchEntryRepository)
 
-	program := tea.NewProgram(tui.New(), tea.WithAltScreen())
+	logger.Info("MovieTracker CLI ready", "phase", 3, "database", dbPath)
+
+	program := tea.NewProgram(tui.New(movieService), tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		logger.Error("tui failed", "err", err)
 		os.Exit(1)

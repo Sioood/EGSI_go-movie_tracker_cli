@@ -6,7 +6,7 @@ Application terminal en Go pour suivre ses films. Projet en cours — voir [PLAN
 
 - Go 1.22+
 
-## Phase 2 — TUI et navigation
+## Phase 3 — CRUD films dans la TUI
 
 ```bash
 make build
@@ -19,6 +19,7 @@ Les bases SQLite sont créées dans `data/client.db` et `data/server.db`.
 
 La couche locale contient maintenant un repository SQLite pour les films, un repository pour les entrées de visionnage et un `MovieService` chargé des validations métier.
 La CLI lance aussi une TUI Bubble Tea avec navigation entre les écrans Splash, Menu, Films, Détail, Statistiques, Paramètres, Connexion et Aide.
+Depuis l'écran Films, il est possible d'ajouter un film, ouvrir son détail, le marquer vu, renseigner une date, une note et une critique, puis sauvegarder le tout en SQLite local.
 
 ## Structure
 

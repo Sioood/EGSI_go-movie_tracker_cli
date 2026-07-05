@@ -28,6 +28,10 @@ var (
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("203"))
+
+	labelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("229")).
+			Bold(true)
 )
 
 func (m Model) View() string {
@@ -60,11 +64,15 @@ func (m Model) headerView() string {
 }
 
 func (m Model) footerView() string {
-	help := "↑/↓ naviguer • entrée sélectionner • esc menu • ? aide • q quitter"
-	if m.route == RouteSplash {
+	help := "↑/↓ naviguer • entrée sélectionner • a ajouter • d supprimer • esc menu • ? aide • q quitter"
+	switch m.route {
+	case RouteSplash:
 		help = "entrée commencer • q quitter"
-	}
-	if m.route == RouteSettings || m.route == RouteLogin || m.route == RouteMovieDetail {
+	case RouteMovieForm:
+		help = "tab changer de champ • entrée ajouter • esc liste • q quitter"
+	case RouteMovieDetail:
+		help = "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste"
+	case RouteSettings, RouteLogin:
 		help = "saisir du texte • entrée valider • esc menu • q quitter"
 	}
 	return subtleStyle.Render(help)
@@ -77,7 +85,9 @@ func (m Model) bodyView() string {
 	case RouteMainMenu:
 		return m.menu.View()
 	case RouteMovieList:
-		return m.movies.View()
+		return m.movieListView()
+	case RouteMovieForm:
+		return m.movieFormView()
 	case RouteMovieDetail:
 		return m.movieDetailView()
 	case RouteStats:
@@ -103,14 +113,77 @@ func (m Model) splashView() string {
 	}, "\n"))
 }
 
-func (m Model) movieDetailView() string {
+func (m Model) movieListView() string {
+	if len(m.movieRecords) == 0 {
+		return panelStyle.Render(strings.Join([]string{
+			activeStyle.Render("Films"),
+			"",
+			"Aucun film enregistré pour l'instant.",
+			"Appuie sur a pour ajouter ton premier film.",
+			"",
+			statusLine(m.message),
+		}, "\n"))
+	}
+
+	lines := []string{m.movies.View()}
+	if m.message != "" {
+		lines = append(lines, "", statusLine(m.message))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (m Model) movieFormView() string {
+	message := m.message
+	if message == "" {
+		message = "Titre obligatoire, année optionnelle."
+	}
+
 	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render("Détail film"),
+		activeStyle.Render("Ajouter un film"),
 		"",
-		"Cet écran recevra les données SQLite en phase 3.",
-		"Le composant textarea est déjà présent pour préparer les critiques.",
+		label("Titre", m.formFocus == 0),
+		m.titleInput.View(),
 		"",
-		m.notes.View(),
+		label("Année", m.formFocus == 1),
+		m.yearInput.View(),
+		"",
+		statusLine(message),
+	}, "\n"))
+}
+
+func (m Model) movieDetailView() string {
+	title := "Détail film"
+	if m.selectedMovie.Title != "" {
+		title = m.selectedMovie.Title
+		if m.selectedMovie.Year > 0 {
+			title = fmt.Sprintf("%s (%d)", title, m.selectedMovie.Year)
+		}
+	}
+
+	watched := "non"
+	if m.selectedEntry.Watched {
+		watched = "oui"
+	}
+
+	message := m.message
+	if message == "" {
+		message = "Modifie les champs puis valide avec Entrée."
+	}
+
+	return panelStyle.Render(strings.Join([]string{
+		activeStyle.Render(title),
+		subtleStyle.Render("Vu : " + watched),
+		"",
+		label("Note /10", m.detailFocus == 0),
+		m.ratingInput.View(),
+		"",
+		label("Date de visionnage", m.detailFocus == 1),
+		m.watchedAtInput.View(),
+		"",
+		label("Critique", m.detailFocus == 2),
+		m.reviewInput.View(),
+		"",
+		statusLine(message),
 	}, "\n"))
 }
 
@@ -118,7 +191,7 @@ func (m Model) statsView() string {
 	return panelStyle.Render(strings.Join([]string{
 		activeStyle.Render("Statistiques"),
 		"",
-		"Films suivis        3 exemples",
+		fmt.Sprintf("Films suivis        %d", len(m.movieRecords)),
 		"Films vus           à connecter en phase 5",
 		"Note moyenne        à connecter en phase 5",
 		"",
@@ -165,9 +238,14 @@ func (m Model) helpView() string {
 	return panelStyle.Render(strings.Join([]string{
 		activeStyle.Render("Aide"),
 		"",
-		"Entrée      sélectionner ou valider",
+		"Entrée      sélectionner, ajouter ou enregistrer",
 		"↑/↓         naviguer dans les listes",
-		"Esc ou m    revenir au menu",
+		"a           ajouter un film depuis la liste",
+		"d           supprimer le film sélectionné",
+		"Tab         changer de champ",
+		"w           marquer vu aujourd'hui",
+		"u           marquer non vu",
+		"Esc ou m    revenir en arrière",
 		"s           paramètres",
 		"l           connexion",
 		"? ou h      aide",
@@ -175,8 +253,24 @@ func (m Model) helpView() string {
 	}, "\n"))
 }
 
+func label(text string, active bool) string {
+	if active {
+		return activeStyle.Render(text)
+	}
+	return labelStyle.Render(text)
+}
+
 func statusLine(message string) string {
-	if strings.Contains(strings.ToLower(message), "ne peut pas") || strings.Contains(strings.ToLower(message), "saisis") {
+	if message == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(message)
+	if strings.Contains(lower, "invalide") ||
+		strings.Contains(lower, "impossible") ||
+		strings.Contains(lower, "obligatoire") ||
+		strings.Contains(lower, "ne peut pas") ||
+		strings.Contains(lower, "saisis") {
 		return errorStyle.Render(message)
 	}
 	return activeStyle.Render(message)

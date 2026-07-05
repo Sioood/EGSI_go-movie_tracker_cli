@@ -6,6 +6,7 @@ const (
 	RouteSplash      Route = "splash"
 	RouteMainMenu    Route = "main_menu"
 	RouteMovieList   Route = "movie_list"
+	RouteMovieForm   Route = "movie_form"
 	RouteMovieDetail Route = "movie_detail"
 	RouteStats       Route = "stats"
 	RouteSettings    Route = "settings"
@@ -31,6 +32,10 @@ type AppState struct {
 
 func defaultState() AppState {
 	return AppState{
+		User: UserState{
+			ID:    "local-user",
+			Email: "local@movietracker",
+		},
 		Config: Config{
 			Theme:       "midnight",
 			ServerURL:   "http://localhost:8080",

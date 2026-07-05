@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 2** — TUI et navigation implémentées.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 3** — CRUD films local dans la TUI.
 
 **Dernière mise à jour** : 2026-07-05  
-**Phase en cours** : Phase 3 — Gestion films dans la TUI
+**Phase en cours** : Phase 4 — Recherche et filtres
 
-**Progression globale** : `3 / 14` phases terminées
+**Progression globale** : `4 / 14` phases terminées
 
 ---
 
@@ -14,7 +14,7 @@
 - [x] **Phase 0** — [Fondations](#phase-0--fondations) · P0 · Facile · ~2j
 - [x] **Phase 1** — [Données locales](#phase-1--couche-données-locale) · P0 · Moyen · ~3j
 - [x] **Phase 2** — [TUI navigation](#phase-2--tui--coquille-et-navigation) · P0 · Moyen-Difficile · ~4j
-- [ ] **Phase 3** — [CRUD films TUI](#phase-3--gestion-films-dans-la-tui) · P0 · Moyen · ~3j
+- [x] **Phase 3** — [CRUD films TUI](#phase-3--gestion-films-dans-la-tui) · P0 · Moyen · ~3j
 - [ ] **Phase 4** — [Recherche / filtres](#phase-4--recherche-et-filtres) · P1 · Moyen · ~2j
 - [ ] **Phase 5** — [Statistiques](#phase-5--statistiques) · P1 · Moyen · ~2j
 - [ ] **Phase 6** — [Auth serveur](#phase-6--authentification-serveur) · P0 · Moyen-Difficile · ~4j
@@ -134,22 +134,26 @@ make run-server
 
 ## Phase 3 — Gestion films dans la TUI
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen | **Temps** : ~3 jours
 
 #### Tâches
 
-- [ ] Ajouter film (titre + année)
-- [ ] Liste avec statut vu/non vu
-- [ ] Détail : note, critique, date
-- [ ] Marquer vu + date YYYY-MM-DD
-- [ ] Note échelle 5/10
-- [ ] Critique texte
-- [ ] Messages d'erreur inline
+- [x] Ajouter film (titre + année)
+- [x] Liste avec statut vu/non vu
+- [x] Détail : note, critique, date
+- [x] Marquer vu + date YYYY-MM-DD
+- [x] Note échelle 5/10
+- [x] Critique texte
+- [x] Messages d'erreur inline
 
 #### Livrables
 
-- [ ] Cycle add → watch → rate → review en local
+- [x] Cycle add → watch → rate → review en local
+
+#### Fichiers livrés
+
+`internal/tui/`, `cmd/cli/main.go`
 
 ---
 
