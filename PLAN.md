@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 1** — couche données locale implémentée.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 2** — TUI et navigation implémentées.
 
 **Dernière mise à jour** : 2026-07-05  
-**Phase en cours** : Phase 2 — TUI : coquille et navigation
+**Phase en cours** : Phase 3 — Gestion films dans la TUI
 
-**Progression globale** : `2 / 14` phases terminées
+**Progression globale** : `3 / 14` phases terminées
 
 ---
 
@@ -13,7 +13,7 @@
 
 - [x] **Phase 0** — [Fondations](#phase-0--fondations) · P0 · Facile · ~2j
 - [x] **Phase 1** — [Données locales](#phase-1--couche-données-locale) · P0 · Moyen · ~3j
-- [ ] **Phase 2** — [TUI navigation](#phase-2--tui--coquille-et-navigation) · P0 · Moyen-Difficile · ~4j
+- [x] **Phase 2** — [TUI navigation](#phase-2--tui--coquille-et-navigation) · P0 · Moyen-Difficile · ~4j
 - [ ] **Phase 3** — [CRUD films TUI](#phase-3--gestion-films-dans-la-tui) · P0 · Moyen · ~3j
 - [ ] **Phase 4** — [Recherche / filtres](#phase-4--recherche-et-filtres) · P1 · Moyen · ~2j
 - [ ] **Phase 5** — [Statistiques](#phase-5--statistiques) · P1 · Moyen · ~2j
@@ -111,20 +111,24 @@ make run-server
 
 ## Phase 2 — TUI : coquille et navigation
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen-Difficile | **Temps** : ~4 jours
 
 #### Tâches
 
-- [ ] Modèle Bubble Tea + routing écrans
-- [ ] Écrans : Splash, MainMenu, MovieList, MovieDetail, Stats, Settings, Login, Help
-- [ ] Bubbles : list, textinput, textarea
-- [ ] Lip Gloss : header, footer
-- [ ] État global : config, utilisateur
+- [x] Modèle Bubble Tea + routing écrans
+- [x] Écrans : Splash, MainMenu, MovieList, MovieDetail, Stats, Settings, Login, Help
+- [x] Bubbles : list, textinput, textarea
+- [x] Lip Gloss : header, footer
+- [x] État global : config, utilisateur
 
 #### Livrables
 
-- [ ] Navigation clavier entre tous les écrans
+- [x] Navigation clavier entre tous les écrans
+
+#### Fichiers livrés
+
+`internal/tui/`, `cmd/cli/main.go`
 
 ---
 

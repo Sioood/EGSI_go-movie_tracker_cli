@@ -6,6 +6,9 @@ import (
 
 	"github.com/movietracker/movie-tracker/internal/database"
 	"github.com/movietracker/movie-tracker/internal/logging"
+	"github.com/movietracker/movie-tracker/internal/tui"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
@@ -25,5 +28,11 @@ func main() {
 	}
 	defer db.Close()
 
-	logger.Info("MovieTracker CLI ready", "phase", 1, "database", dbPath)
+	logger.Info("MovieTracker CLI ready", "phase", 2, "database", dbPath)
+
+	program := tea.NewProgram(tui.New(), tea.WithAltScreen())
+	if _, err := program.Run(); err != nil {
+		logger.Error("tui failed", "err", err)
+		os.Exit(1)
+	}
 }
