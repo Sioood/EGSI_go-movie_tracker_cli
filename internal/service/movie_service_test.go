@@ -42,6 +42,10 @@ func (fakeMovieStore) ListByUser(ctx context.Context, userID string) ([]domain.M
 	return []domain.Movie{{UserID: userID}}, nil
 }
 
+func (fakeMovieStore) Search(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error) {
+	return []domain.Movie{{UserID: params.UserID, Title: params.Query}}, nil
+}
+
 func (fakeMovieStore) Update(ctx context.Context, movie domain.Movie) (domain.Movie, error) {
 	return movie, nil
 }

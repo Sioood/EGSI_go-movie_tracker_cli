@@ -30,3 +30,28 @@ type WatchEntry struct {
 	WatchedAt   *time.Time
 	UpdatedAt   time.Time
 }
+
+type MovieFilter string
+
+const (
+	MovieFilterAll       MovieFilter = "all"
+	MovieFilterWatched   MovieFilter = "watched"
+	MovieFilterUnwatched MovieFilter = "unwatched"
+	MovieFilterRated     MovieFilter = "rated"
+	MovieFilterUnrated   MovieFilter = "unrated"
+)
+
+type MovieSort string
+
+const (
+	MovieSortTitle  MovieSort = "title"
+	MovieSortDate   MovieSort = "date"
+	MovieSortRating MovieSort = "rating"
+)
+
+type MovieSearchParams struct {
+	UserID string
+	Query  string
+	Filter MovieFilter
+	Sort   MovieSort
+}

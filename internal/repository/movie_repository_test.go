@@ -110,6 +110,97 @@ func TestMovieRepositoryCRUD(t *testing.T) {
 	}
 }
 
+func TestMovieRepositorySearch(t *testing.T) {
+	db := openTestDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	movies := NewMovieRepository(db)
+	watchEntries := NewWatchEntryRepository(db)
+
+	arrival, err := movies.Create(ctx, domain.Movie{UserID: "user-1", Title: "Arrival", Year: 2016})
+	if err != nil {
+		t.Fatalf("create arrival: %v", err)
+	}
+	heat, err := movies.Create(ctx, domain.Movie{UserID: "user-1", Title: "Heat", Year: 1995})
+	if err != nil {
+		t.Fatalf("create heat: %v", err)
+	}
+	matrix, err := movies.Create(ctx, domain.Movie{UserID: "user-1", Title: "The Matrix", Year: 1999})
+	if err != nil {
+		t.Fatalf("create matrix: %v", err)
+	}
+	_, err = movies.Create(ctx, domain.Movie{UserID: "user-2", Title: "Arrival", Year: 2016})
+	if err != nil {
+		t.Fatalf("create other user movie: %v", err)
+	}
+
+	arrivalRating := 8.5
+	arrivalDate := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	_, err = watchEntries.Upsert(ctx, domain.WatchEntry{
+		MovieID:     arrival.ID,
+		Watched:     true,
+		Rating:      &arrivalRating,
+		RatingScale: 10,
+		WatchedAt:   &arrivalDate,
+	})
+	if err != nil {
+		t.Fatalf("watch arrival: %v", err)
+	}
+
+	heatRating := 9.5
+	heatDate := time.Date(2026, 7, 4, 0, 0, 0, 0, time.UTC)
+	_, err = watchEntries.Upsert(ctx, domain.WatchEntry{
+		MovieID:     heat.ID,
+		Watched:     true,
+		Rating:      &heatRating,
+		RatingScale: 10,
+		WatchedAt:   &heatDate,
+	})
+	if err != nil {
+		t.Fatalf("watch heat: %v", err)
+	}
+
+	result, err := movies.Search(ctx, domain.MovieSearchParams{
+		UserID: "user-1",
+		Query:  "arr",
+		Filter: domain.MovieFilterAll,
+		Sort:   domain.MovieSortTitle,
+	})
+	if err != nil {
+		t.Fatalf("search by title: %v", err)
+	}
+	assertMovieTitles(t, result, "Arrival")
+
+	result, err = movies.Search(ctx, domain.MovieSearchParams{UserID: "user-1", Filter: domain.MovieFilterWatched, Sort: domain.MovieSortTitle})
+	if err != nil {
+		t.Fatalf("filter watched: %v", err)
+	}
+	assertMovieTitles(t, result, "Arrival", "Heat")
+
+	result, err = movies.Search(ctx, domain.MovieSearchParams{UserID: "user-1", Filter: domain.MovieFilterUnwatched, Sort: domain.MovieSortTitle})
+	if err != nil {
+		t.Fatalf("filter unwatched: %v", err)
+	}
+	assertMovieTitles(t, result, "The Matrix")
+
+	result, err = movies.Search(ctx, domain.MovieSearchParams{UserID: "user-1", Filter: domain.MovieFilterRated, Sort: domain.MovieSortRating})
+	if err != nil {
+		t.Fatalf("filter rated: %v", err)
+	}
+	assertMovieTitles(t, result, "Heat", "Arrival")
+
+	result, err = movies.Search(ctx, domain.MovieSearchParams{UserID: "user-1", Filter: domain.MovieFilterAll, Sort: domain.MovieSortDate})
+	if err != nil {
+		t.Fatalf("sort date: %v", err)
+	}
+	assertMovieTitles(t, result, "Heat", "Arrival", "The Matrix")
+
+	if matrix.ID == "" {
+		t.Fatal("expected matrix id")
+	}
+}
+
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
@@ -123,4 +214,17 @@ func openTestDB(t *testing.T) *sql.DB {
 	}
 
 	return db
+}
+
+func assertMovieTitles(t *testing.T, movies []domain.Movie, titles ...string) {
+	t.Helper()
+
+	if len(movies) != len(titles) {
+		t.Fatalf("expected %d movies, got %d: %+v", len(titles), len(movies), movies)
+	}
+	for index, title := range titles {
+		if movies[index].Title != title {
+			t.Fatalf("movie %d: expected %q, got %q", index, title, movies[index].Title)
+		}
+	}
 }

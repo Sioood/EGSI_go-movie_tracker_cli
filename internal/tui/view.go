@@ -64,7 +64,7 @@ func (m Model) headerView() string {
 }
 
 func (m Model) footerView() string {
-	help := "↑/↓ naviguer • entrée sélectionner • a ajouter • d supprimer • esc menu • ? aide • q quitter"
+	help := "↑/↓ naviguer • entrée sélectionner • / chercher • f filtre • t tri • a ajouter • q quitter"
 	switch m.route {
 	case RouteSplash:
 		help = "entrée commencer • q quitter"
@@ -114,18 +114,30 @@ func (m Model) splashView() string {
 }
 
 func (m Model) movieListView() string {
+	searchBlock := strings.Join([]string{
+		label("Recherche", m.searchInput.Focused()),
+		m.searchInput.View(),
+		subtleStyle.Render("Filtre : " + filterLabel(m.filter) + " | Tri : " + sortLabel(m.sort) + " | f filtre | t tri | c reset"),
+	}, "\n")
+
 	if len(m.movieRecords) == 0 {
+		emptyMessage := "Aucun film enregistré pour l'instant."
+		if strings.TrimSpace(m.searchInput.Value()) != "" || m.filter != "all" {
+			emptyMessage = "Aucun film ne correspond à la recherche."
+		}
 		return panelStyle.Render(strings.Join([]string{
 			activeStyle.Render("Films"),
 			"",
-			"Aucun film enregistré pour l'instant.",
-			"Appuie sur a pour ajouter ton premier film.",
+			searchBlock,
+			"",
+			emptyMessage,
+			"Appuie sur a pour ajouter un film.",
 			"",
 			statusLine(m.message),
 		}, "\n"))
 	}
 
-	lines := []string{m.movies.View()}
+	lines := []string{panelStyle.Render(searchBlock), m.movies.View()}
 	if m.message != "" {
 		lines = append(lines, "", statusLine(m.message))
 	}

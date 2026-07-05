@@ -20,6 +20,7 @@ type MovieClient interface {
 	CreateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	GetMovie(ctx context.Context, id string) (domain.Movie, error)
 	ListMovies(ctx context.Context, userID string) ([]domain.Movie, error)
+	SearchMovies(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error)
 	UpdateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	DeleteMovie(ctx context.Context, id string) error
 	SaveWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error)
@@ -43,11 +44,14 @@ type Model struct {
 	emailInput     textinput.Model
 	titleInput     textinput.Model
 	yearInput      textinput.Model
+	searchInput    textinput.Model
 	ratingInput    textinput.Model
 	watchedAtInput textinput.Model
 	reviewInput    textarea.Model
 	formFocus      int
 	detailFocus    int
+	filter         domain.MovieFilter
+	sort           domain.MovieSort
 	message        string
 }
 
@@ -84,6 +88,10 @@ func New(services ...MovieClient) Model {
 	yearInput.Placeholder = "2026"
 	yearInput.CharLimit = 4
 
+	searchInput := textinput.New()
+	searchInput.Placeholder = "Rechercher un titre..."
+	searchInput.CharLimit = 80
+
 	ratingInput := textinput.New()
 	ratingInput.Placeholder = "8.5"
 	ratingInput.CharLimit = 4
@@ -108,9 +116,12 @@ func New(services ...MovieClient) Model {
 		emailInput:     emailInput,
 		titleInput:     titleInput,
 		yearInput:      yearInput,
+		searchInput:    searchInput,
 		ratingInput:    ratingInput,
 		watchedAtInput: watchedAtInput,
 		reviewInput:    reviewInput,
+		filter:         domain.MovieFilterAll,
+		sort:           domain.MovieSortTitle,
 	}
 	model.refreshMovies()
 	return model
@@ -135,6 +146,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.route == RouteMovieList && m.searchInput.Focused() {
+		if msg.String() == "esc" {
+			m.searchInput.Blur()
+			return m, nil
+		}
+		return m.updateMovieList(msg)
+	}
+
 	switch msg.String() {
 	case "ctrl+c", "q":
 		return m, tea.Quit
@@ -212,7 +231,34 @@ func (m Model) updateMainMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.searchInput.Focused() {
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.refreshMovies()
+		return m, cmd
+	}
+
 	switch msg.String() {
+	case "/":
+		m.searchInput.Focus()
+		return m, textinput.Blink
+	case "f":
+		m.filter = nextMovieFilter(m.filter)
+		m.message = "Filtre : " + filterLabel(m.filter)
+		m.refreshMovies()
+		return m, nil
+	case "t":
+		m.sort = nextMovieSort(m.sort)
+		m.message = "Tri : " + sortLabel(m.sort)
+		m.refreshMovies()
+		return m, nil
+	case "c":
+		m.searchInput.SetValue("")
+		m.filter = domain.MovieFilterAll
+		m.sort = domain.MovieSortTitle
+		m.message = "Recherche et filtres réinitialisés."
+		m.refreshMovies()
+		return m, nil
 	case "a":
 		m.prepareMovieForm()
 		m.goTo(RouteMovieForm)
@@ -398,6 +444,7 @@ func (m *Model) clearFocus() {
 	m.emailInput.Blur()
 	m.titleInput.Blur()
 	m.yearInput.Blur()
+	m.searchInput.Blur()
 	m.ratingInput.Blur()
 	m.watchedAtInput.Blur()
 	m.reviewInput.Blur()
@@ -425,7 +472,12 @@ func (m *Model) refreshMovies() {
 		return
 	}
 
-	movies, err := m.service.ListMovies(context.Background(), m.state.User.ID)
+	movies, err := m.service.SearchMovies(context.Background(), domain.MovieSearchParams{
+		UserID: m.state.User.ID,
+		Query:  m.searchInput.Value(),
+		Filter: m.filter,
+		Sort:   m.sort,
+	})
 	if err != nil {
 		m.message = "Chargement impossible : " + err.Error()
 		return
@@ -575,6 +627,58 @@ func movieStatus(entry domain.WatchEntry, found bool) string {
 		parts = append(parts, fmt.Sprintf("note %.1f/10", *entry.Rating))
 	}
 	return strings.Join(parts, " · ")
+}
+
+func nextMovieFilter(filter domain.MovieFilter) domain.MovieFilter {
+	switch filter {
+	case domain.MovieFilterAll:
+		return domain.MovieFilterWatched
+	case domain.MovieFilterWatched:
+		return domain.MovieFilterUnwatched
+	case domain.MovieFilterUnwatched:
+		return domain.MovieFilterRated
+	case domain.MovieFilterRated:
+		return domain.MovieFilterUnrated
+	default:
+		return domain.MovieFilterAll
+	}
+}
+
+func filterLabel(filter domain.MovieFilter) string {
+	switch filter {
+	case domain.MovieFilterWatched:
+		return "vus"
+	case domain.MovieFilterUnwatched:
+		return "non vus"
+	case domain.MovieFilterRated:
+		return "notés"
+	case domain.MovieFilterUnrated:
+		return "sans note"
+	default:
+		return "tous"
+	}
+}
+
+func nextMovieSort(sort domain.MovieSort) domain.MovieSort {
+	switch sort {
+	case domain.MovieSortTitle:
+		return domain.MovieSortDate
+	case domain.MovieSortDate:
+		return domain.MovieSortRating
+	default:
+		return domain.MovieSortTitle
+	}
+}
+
+func sortLabel(sort domain.MovieSort) string {
+	switch sort {
+	case domain.MovieSortDate:
+		return "date"
+	case domain.MovieSortRating:
+		return "note"
+	default:
+		return "titre"
+	}
 }
 
 func parseOptionalYear(value string) (int, error) {

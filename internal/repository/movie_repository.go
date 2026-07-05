@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -43,7 +44,7 @@ func (r *MovieRepository) Create(ctx context.Context, movie domain.Movie) (domai
 
 func (r *MovieRepository) GetByID(ctx context.Context, id string) (domain.Movie, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, user_id, title, year, external_id, created_at, updated_at
+		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.created_at, movies.updated_at
 		FROM movies
 		WHERE id = ?
 	`, id)
@@ -60,14 +61,58 @@ func (r *MovieRepository) GetByID(ctx context.Context, id string) (domain.Movie,
 }
 
 func (r *MovieRepository) ListByUser(ctx context.Context, userID string) ([]domain.Movie, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, title, year, external_id, created_at, updated_at
+	return r.Search(ctx, domain.MovieSearchParams{UserID: userID, Filter: domain.MovieFilterAll, Sort: domain.MovieSortTitle})
+}
+
+func (r *MovieRepository) Search(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error) {
+	if params.Filter == "" {
+		params.Filter = domain.MovieFilterAll
+	}
+	if params.Sort == "" {
+		params.Sort = domain.MovieSortTitle
+	}
+
+	query := `
+		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.created_at, movies.updated_at
 		FROM movies
-		WHERE user_id = ?
-		ORDER BY title COLLATE NOCASE ASC, created_at ASC
-	`, userID)
+		LEFT JOIN watch_entries ON watch_entries.movie_id = movies.id
+		WHERE movies.user_id = ?
+	`
+	args := []any{params.UserID}
+
+	if strings.TrimSpace(params.Query) != "" {
+		query += ` AND movies.title LIKE ? ESCAPE '\'`
+		args = append(args, "%"+escapeLike(strings.TrimSpace(params.Query))+"%")
+	}
+
+	switch params.Filter {
+	case domain.MovieFilterWatched:
+		query += ` AND COALESCE(watch_entries.watched, 0) = 1`
+	case domain.MovieFilterUnwatched:
+		query += ` AND COALESCE(watch_entries.watched, 0) = 0`
+	case domain.MovieFilterRated:
+		query += ` AND watch_entries.rating IS NOT NULL`
+	case domain.MovieFilterUnrated:
+		query += ` AND watch_entries.rating IS NULL`
+	case domain.MovieFilterAll:
+	default:
+		return nil, fmt.Errorf("%w: unknown movie filter %q", apperrors.ErrValidation, params.Filter)
+	}
+
+	switch params.Sort {
+	case domain.MovieSortTitle:
+		query += ` ORDER BY movies.title COLLATE NOCASE ASC, movies.created_at ASC`
+	case domain.MovieSortDate:
+		query += ` ORDER BY watch_entries.watched_at IS NULL ASC, watch_entries.watched_at DESC, movies.title COLLATE NOCASE ASC`
+	case domain.MovieSortRating:
+		query += ` ORDER BY watch_entries.rating IS NULL ASC, watch_entries.rating DESC, movies.title COLLATE NOCASE ASC`
+	default:
+		return nil, fmt.Errorf("%w: unknown movie sort %q", apperrors.ErrValidation, params.Sort)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("%w: list movies: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: search movies: %v", apperrors.ErrDB, err)
 	}
 	defer rows.Close()
 
@@ -84,6 +129,13 @@ func (r *MovieRepository) ListByUser(ctx context.Context, userID string) ([]doma
 	}
 
 	return movies, nil
+}
+
+func escapeLike(value string) string {
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, `%`, `\%`)
+	value = strings.ReplaceAll(value, `_`, `\_`)
+	return value
 }
 
 func (r *MovieRepository) Update(ctx context.Context, movie domain.Movie) (domain.Movie, error) {

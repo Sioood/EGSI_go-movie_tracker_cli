@@ -13,6 +13,7 @@ type MovieStore interface {
 	Create(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	GetByID(ctx context.Context, id string) (domain.Movie, error)
 	ListByUser(ctx context.Context, userID string) ([]domain.Movie, error)
+	Search(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error)
 	Update(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -50,6 +51,14 @@ func (s *MovieService) GetMovie(ctx context.Context, id string) (domain.Movie, e
 
 func (s *MovieService) ListMovies(ctx context.Context, userID string) ([]domain.Movie, error) {
 	return s.movies.ListByUser(ctx, userID)
+}
+
+func (s *MovieService) SearchMovies(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error) {
+	params.Query = strings.TrimSpace(params.Query)
+	if params.UserID == "" {
+		return nil, fmt.Errorf("%w: user id is required", apperrors.ErrValidation)
+	}
+	return s.movies.Search(ctx, params)
 }
 
 func (s *MovieService) UpdateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error) {

@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 3** — CRUD films local dans la TUI.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 4** — recherche, filtres et tri dans la TUI.
 
 **Dernière mise à jour** : 2026-07-05  
-**Phase en cours** : Phase 4 — Recherche et filtres
+**Phase en cours** : Phase 5 — Statistiques
 
-**Progression globale** : `4 / 14` phases terminées
+**Progression globale** : `5 / 14` phases terminées
 
 ---
 
@@ -15,7 +15,7 @@
 - [x] **Phase 1** — [Données locales](#phase-1--couche-données-locale) · P0 · Moyen · ~3j
 - [x] **Phase 2** — [TUI navigation](#phase-2--tui--coquille-et-navigation) · P0 · Moyen-Difficile · ~4j
 - [x] **Phase 3** — [CRUD films TUI](#phase-3--gestion-films-dans-la-tui) · P0 · Moyen · ~3j
-- [ ] **Phase 4** — [Recherche / filtres](#phase-4--recherche-et-filtres) · P1 · Moyen · ~2j
+- [x] **Phase 4** — [Recherche / filtres](#phase-4--recherche-et-filtres) · P1 · Moyen · ~2j
 - [ ] **Phase 5** — [Statistiques](#phase-5--statistiques) · P1 · Moyen · ~2j
 - [ ] **Phase 6** — [Auth serveur](#phase-6--authentification-serveur) · P0 · Moyen-Difficile · ~4j
 - [ ] **Phase 7** — [API REST](#phase-7--api-rest-films) · P0 · Moyen · ~3j
@@ -159,20 +159,24 @@ make run-server
 
 ## Phase 4 — Recherche et filtres
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P1 | **Difficulté** : Moyen | **Temps** : ~2 jours
 
 #### Tâches
 
-- [ ] Barre recherche TUI (LIKE titre)
-- [ ] Filtres : tous / vus / non vus / notés / sans note
-- [ ] Tri : titre, date, note
-- [ ] Repository Search avec MovieSearchParams
-- [ ] Mise à jour temps réel liste
+- [x] Barre recherche TUI (LIKE titre)
+- [x] Filtres : tous / vus / non vus / notés / sans note
+- [x] Tri : titre, date, note
+- [x] Repository Search avec MovieSearchParams
+- [x] Mise à jour temps réel liste
 
 #### Livrables
 
-- [ ] Recherche + filtres fonctionnels
+- [x] Recherche + filtres fonctionnels
+
+#### Fichiers livrés
+
+`internal/domain/`, `internal/repository/`, `internal/service/`, `internal/tui/`
 
 ---
 

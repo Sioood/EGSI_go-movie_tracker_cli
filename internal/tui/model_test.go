@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,6 +85,44 @@ func TestMovieAddAndDetailSave(t *testing.T) {
 	}
 }
 
+func TestMovieSearchAndFilters(t *testing.T) {
+	store := newFakeMovieService()
+	store.movies = []domain.Movie{
+		{ID: "movie-1", UserID: "local-user", Title: "Arrival", Year: 2016},
+		{ID: "movie-2", UserID: "local-user", Title: "Heat", Year: 1995},
+	}
+	rating := 9.0
+	store.entries["movie-2"] = domain.WatchEntry{MovieID: "movie-2", Watched: true, Rating: &rating}
+
+	model := New(store)
+	model.goTo(RouteMovieList)
+
+	model = press(t, model, "/")
+	model = press(t, model, "a")
+	model = press(t, model, "r")
+
+	if len(model.movieRecords) != 1 || model.movieRecords[0].Title != "Arrival" {
+		t.Fatalf("expected search to keep Arrival only, got %+v", model.movieRecords)
+	}
+
+	model.searchInput.SetValue("")
+	model.refreshMovies()
+	model = press(t, model, "esc")
+	model = press(t, model, "f")
+
+	if model.filter != domain.MovieFilterWatched {
+		t.Fatalf("expected watched filter, got %s", model.filter)
+	}
+	if len(model.movieRecords) != 1 || model.movieRecords[0].Title != "Heat" {
+		t.Fatalf("expected watched filter to keep Heat only, got %+v", model.movieRecords)
+	}
+
+	model = press(t, model, "t")
+	if model.sort != domain.MovieSortDate {
+		t.Fatalf("expected date sort, got %s", model.sort)
+	}
+}
+
 func press(t *testing.T, model Model, key string) Model {
 	t.Helper()
 
@@ -141,11 +180,23 @@ func (s *fakeMovieService) GetMovie(ctx context.Context, id string) (domain.Movi
 }
 
 func (s *fakeMovieService) ListMovies(ctx context.Context, userID string) ([]domain.Movie, error) {
+	return s.SearchMovies(ctx, domain.MovieSearchParams{UserID: userID})
+}
+
+func (s *fakeMovieService) SearchMovies(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error) {
 	var result []domain.Movie
 	for _, movie := range s.movies {
-		if movie.UserID == userID {
-			result = append(result, movie)
+		if movie.UserID != params.UserID {
+			continue
 		}
+		if params.Query != "" && !strings.Contains(strings.ToLower(movie.Title), strings.ToLower(params.Query)) {
+			continue
+		}
+		entry, hasEntry := s.entries[movie.ID]
+		if !matchesFakeFilter(entry, hasEntry, params.Filter) {
+			continue
+		}
+		result = append(result, movie)
 	}
 	return result, nil
 }
@@ -189,4 +240,19 @@ func (s *fakeMovieService) GetWatchEntry(ctx context.Context, movieID string) (d
 		return domain.WatchEntry{}, apperrors.ErrWatchEntryNotFound
 	}
 	return entry, nil
+}
+
+func matchesFakeFilter(entry domain.WatchEntry, found bool, filter domain.MovieFilter) bool {
+	switch filter {
+	case domain.MovieFilterWatched:
+		return found && entry.Watched
+	case domain.MovieFilterUnwatched:
+		return !found || !entry.Watched
+	case domain.MovieFilterRated:
+		return found && entry.Rating != nil
+	case domain.MovieFilterUnrated:
+		return !found || entry.Rating == nil
+	default:
+		return true
+	}
 }
