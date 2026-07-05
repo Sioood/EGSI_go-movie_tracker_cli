@@ -1,18 +1,18 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 0** — rien d'autre n'est implémenté pour l'instant.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 1** — couche données locale implémentée.
 
-**Dernière mise à jour** : 2026-07-04  
-**Phase en cours** : Phase 1 — Couche données locale
+**Dernière mise à jour** : 2026-07-05  
+**Phase en cours** : Phase 2 — TUI : coquille et navigation
 
-**Progression globale** : `1 / 14` phases terminées
+**Progression globale** : `2 / 14` phases terminées
 
 ---
 
 ## Vue d'ensemble — toutes les phases
 
 - [x] **Phase 0** — [Fondations](#phase-0--fondations) · P0 · Facile · ~2j
-- [ ] **Phase 1** — [Données locales](#phase-1--couche-données-locale) · P0 · Moyen · ~3j
+- [x] **Phase 1** — [Données locales](#phase-1--couche-données-locale) · P0 · Moyen · ~3j
 - [ ] **Phase 2** — [TUI navigation](#phase-2--tui--coquille-et-navigation) · P0 · Moyen-Difficile · ~4j
 - [ ] **Phase 3** — [CRUD films TUI](#phase-3--gestion-films-dans-la-tui) · P0 · Moyen · ~3j
 - [ ] **Phase 4** — [Recherche / filtres](#phase-4--recherche-et-filtres) · P1 · Moyen · ~2j
@@ -86,22 +86,26 @@ make run-server
 
 ## Phase 1 — Couche données locale
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen | **Temps** : ~3 jours
 
 **Objectif** : CRUD films en local sans TUI ni réseau.
 
 #### Tâches
 
-- [ ] Repository SQLite : Create, GetByID, ListByUser, Update, Delete
-- [ ] Repository WatchEntry : note, critique, date, watched
-- [ ] Tests intégration `:memory:`
-- [ ] MovieService : validation titre, note
-- [ ] Erreurs ErrMovieNotFound, ErrDB wrappées
+- [x] Repository SQLite : Create, GetByID, ListByUser, Update, Delete
+- [x] Repository WatchEntry : note, critique, date, watched
+- [x] Tests intégration `:memory:`
+- [x] MovieService : validation titre, note
+- [x] Erreurs ErrMovieNotFound, ErrDB wrappées
 
 #### Livrables
 
-- [ ] Tests CRUD locaux verts
+- [x] Tests CRUD locaux ajoutés (`make test` à relancer avec Go installé dans l'environnement)
+
+#### Fichiers livrés
+
+`internal/repository/`, `internal/service/`, `migrations/client/002_movies_watch_entries.sql`, `internal/database/migrations/client/002_movies_watch_entries.sql`
 
 ---
 

@@ -6,7 +6,7 @@ Application terminal en Go pour suivre ses films. Projet en cours — voir [PLAN
 
 - Go 1.22+
 
-## Phase 0 — Fondations
+## Phase 1 — Données locales
 
 ```bash
 make build
@@ -17,6 +17,8 @@ make run-server # migre la DB serveur, affiche un log
 
 Les bases SQLite sont créées dans `data/client.db` et `data/server.db`.
 
+La couche locale contient maintenant un repository SQLite pour les films, un repository pour les entrées de visionnage et un `MovieService` chargé des validations métier.
+
 ## Structure
 
 ```
@@ -26,5 +28,7 @@ internal/domain/  # Entités métier
 internal/apperrors/
 internal/database/
 internal/logging/
+internal/repository/
+internal/service/
 migrations/
 ```

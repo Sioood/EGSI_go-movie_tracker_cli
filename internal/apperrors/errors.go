@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrMovieNotFound      = errors.New("movie not found")
+	ErrWatchEntryNotFound = errors.New("watch entry not found")
 	ErrUserNotFound       = errors.New("user not found")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrEmailAlreadyExists = errors.New("email already exists")

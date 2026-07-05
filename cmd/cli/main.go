@@ -25,5 +25,5 @@ func main() {
 	}
 	defer db.Close()
 
-	logger.Info("MovieTracker CLI ready", "phase", 0, "database", dbPath)
+	logger.Info("MovieTracker CLI ready", "phase", 1, "database", dbPath)
 }
