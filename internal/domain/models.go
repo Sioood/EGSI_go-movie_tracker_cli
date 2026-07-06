@@ -55,3 +55,24 @@ type MovieSearchParams struct {
 	Filter MovieFilter
 	Sort   MovieSort
 }
+
+type MonthBucket struct {
+	Year  int
+	Month time.Month
+	Count int
+}
+
+type MovieRating struct {
+	Movie  Movie
+	Rating float64
+}
+
+type Stats struct {
+	TotalMovies   int
+	TotalWatched  int
+	TotalRated    int
+	AverageRating float64
+	BestMovies    []MovieRating
+	WorstMovies   []MovieRating
+	ByMonth       []MonthBucket
+}

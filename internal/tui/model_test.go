@@ -259,6 +259,23 @@ func (s *fakeMovieService) GetWatchEntry(ctx context.Context, movieID string) (d
 	return entry, nil
 }
 
+func (s *fakeMovieService) GetStats(ctx context.Context, userID string) (domain.Stats, error) {
+	stats := domain.Stats{TotalMovies: len(s.movies)}
+	for _, e := range s.entries {
+		if e.Watched {
+			stats.TotalWatched++
+		}
+		if e.Rating != nil {
+			stats.TotalRated++
+			stats.AverageRating += *e.Rating
+		}
+	}
+	if stats.TotalRated > 0 {
+		stats.AverageRating /= float64(stats.TotalRated)
+	}
+	return stats, nil
+}
+
 func matchesFakeFilter(entry domain.WatchEntry, found bool, filter domain.MovieFilter) bool {
 	switch filter {
 	case domain.MovieFilterWatched:

@@ -25,6 +25,7 @@ type MovieClient interface {
 	DeleteMovie(ctx context.Context, id string) error
 	SaveWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error)
 	GetWatchEntry(ctx context.Context, movieID string) (domain.WatchEntry, error)
+	GetStats(ctx context.Context, userID string) (domain.Stats, error)
 }
 
 type Model struct {
@@ -52,6 +53,7 @@ type Model struct {
 	detailFocus    int
 	filter         domain.MovieFilter
 	sort           domain.MovieSort
+	stats          domain.Stats
 	message        string
 }
 
@@ -441,6 +443,8 @@ func (m *Model) goTo(route Route) {
 	switch route {
 	case RouteMovieList:
 		m.refreshMovies()
+	case RouteStats:
+		m.refreshStats()
 	case RouteSettings:
 		m.themeInput.Focus()
 	case RouteLogin:
@@ -512,6 +516,18 @@ func (m *Model) refreshMovies() {
 	}
 
 	m.movies.SetItems(items)
+}
+
+func (m *Model) refreshStats() {
+	if m.service == nil {
+		return
+	}
+	stats, err := m.service.GetStats(context.Background(), m.state.User.ID)
+	if err != nil {
+		m.message = "Stats indisponibles : " + err.Error()
+		return
+	}
+	m.stats = stats
 }
 
 func (m *Model) prepareMovieForm() {

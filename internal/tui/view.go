@@ -2,9 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/movietracker/movie-tracker/internal/domain"
 )
 
 var (
@@ -72,6 +74,8 @@ func (m Model) footerView() string {
 		help = "tab changer de champ • entrée ajouter • esc liste • q quitter"
 	case RouteMovieDetail:
 		help = "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste"
+	case RouteStats:
+		help = "m menu • s paramètres • l connexion • ? aide • q quitter"
 	case RouteSettings, RouteLogin:
 		help = "saisir du texte • entrée valider • esc menu • q quitter"
 	}
@@ -200,15 +204,53 @@ func (m Model) movieDetailView() string {
 }
 
 func (m Model) statsView() string {
-	return panelStyle.Render(strings.Join([]string{
+	s := m.stats
+	lines := []string{
 		activeStyle.Render("Statistiques"),
 		"",
-		fmt.Sprintf("Films suivis        %d", len(m.movieRecords)),
-		"Films vus           à connecter en phase 5",
-		"Note moyenne        à connecter en phase 5",
-		"",
-		"Depuis cet écran : m menu, s paramètres, l connexion, ? aide.",
-	}, "\n"))
+		fmt.Sprintf("%-22s %d", "Films suivis", s.TotalMovies),
+		fmt.Sprintf("%-22s %d", "Films vus", s.TotalWatched),
+		fmt.Sprintf("%-22s %d", "Films notés", s.TotalRated),
+	}
+
+	if s.TotalRated > 0 {
+		lines = append(lines, fmt.Sprintf("%-22s %.1f / 10", "Note moyenne", s.AverageRating))
+	} else {
+		lines = append(lines, fmt.Sprintf("%-22s %s", "Note moyenne", subtleStyle.Render("—")))
+	}
+
+	if len(s.BestMovies) > 0 {
+		lines = append(lines, "", labelStyle.Render("Meilleur(s) film(s)"))
+		for _, mr := range s.BestMovies {
+			title := mr.Movie.Title
+			if mr.Movie.Year > 0 {
+				title = fmt.Sprintf("%s (%d)", title, mr.Movie.Year)
+			}
+			lines = append(lines, fmt.Sprintf("  %-32s %.1f / 10", title, mr.Rating))
+		}
+	}
+
+	if len(s.WorstMovies) > 0 {
+		lines = append(lines, "", labelStyle.Render("Film(s) les moins aimés"))
+		for _, mr := range s.WorstMovies {
+			title := mr.Movie.Title
+			if mr.Movie.Year > 0 {
+				title = fmt.Sprintf("%s (%d)", title, mr.Movie.Year)
+			}
+			lines = append(lines, fmt.Sprintf("  %-32s %.1f / 10", title, mr.Rating))
+		}
+	}
+
+	if len(s.ByMonth) > 0 {
+		lines = append(lines, "", labelStyle.Render("Visionnages par mois"))
+		lines = append(lines, asciiHistogram(s.ByMonth))
+	}
+
+	if s.TotalMovies == 0 {
+		lines = append(lines, "", subtleStyle.Render("Ajoute des films pour voir tes statistiques."))
+	}
+
+	return panelStyle.Render(strings.Join(lines, "\n"))
 }
 
 func (m Model) settingsView() string {
@@ -263,6 +305,34 @@ func (m Model) helpView() string {
 		"? ou h      aide",
 		"q           quitter",
 	}, "\n"))
+}
+
+func asciiHistogram(buckets []domain.MonthBucket) string {
+	if len(buckets) > 12 {
+		buckets = buckets[len(buckets)-12:]
+	}
+
+	maxCount := 0
+	for _, b := range buckets {
+		if b.Count > maxCount {
+			maxCount = b.Count
+		}
+	}
+
+	const barWidth = 18
+	monthNames := [12]string{"Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"}
+
+	var lines []string
+	for _, b := range buckets {
+		lbl := monthNames[b.Month-1] + " " + strconv.Itoa(b.Year)
+		barLen := 0
+		if maxCount > 0 {
+			barLen = (b.Count * barWidth) / maxCount
+		}
+		bar := activeStyle.Render(strings.Repeat("█", barLen))
+		lines = append(lines, fmt.Sprintf("  %-9s %s %d", lbl, bar, b.Count))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func label(text string, active bool) string {

@@ -13,6 +13,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// localService combines MovieService and StatsService to satisfy tui.MovieClient.
+type localService struct {
+	*service.MovieService
+	*service.StatsService
+}
+
 func main() {
 	logger := logging.New("cli")
 
@@ -32,11 +38,16 @@ func main() {
 
 	movieRepository := repository.NewMovieRepository(db)
 	watchEntryRepository := repository.NewWatchEntryRepository(db)
+	statsRepository := repository.NewStatsRepository(db)
+
 	movieService := service.NewMovieService(movieRepository, watchEntryRepository)
+	statsService := service.NewStatsService(statsRepository)
 
-	logger.Info("MovieTracker CLI ready", "phase", 3, "database", dbPath)
+	svc := &localService{movieService, statsService}
 
-	program := tea.NewProgram(tui.New(movieService), tea.WithAltScreen())
+	logger.Info("MovieTracker CLI ready", "phase", 5, "database", dbPath)
+
+	program := tea.NewProgram(tui.New(svc), tea.WithAltScreen())
 	if _, err := program.Run(); err != nil {
 		logger.Error("tui failed", "err", err)
 		os.Exit(1)
