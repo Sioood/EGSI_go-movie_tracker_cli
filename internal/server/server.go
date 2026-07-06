@@ -8,17 +8,52 @@ import (
 	"github.com/movietracker/movie-tracker/internal/service"
 )
 
-// NewRouter builds the HTTP mux with all auth routes and middleware applied.
-// Rate limit: 5 req/s per IP, burst of 20.
-func NewRouter(authSvc *service.AuthService, jwtSecret []byte) http.Handler {
-	mux := http.NewServeMux()
-	h := &authHandler{auth: authSvc}
-	rl := RateLimiter(rate.Limit(5), 20)
+// Services groups all application services needed by the HTTP layer.
+type Services struct {
+	Auth   *service.AuthService
+	Movies *service.MovieService
+	Stats  *service.StatsService
+}
 
-	mux.Handle("POST /api/register", rl(http.HandlerFunc(h.register)))
-	mux.Handle("POST /api/login", rl(http.HandlerFunc(h.login)))
-	mux.Handle("POST /api/refresh", rl(http.HandlerFunc(h.refresh)))
-	mux.Handle("GET /api/me", rl(JWTMiddleware(jwtSecret, http.HandlerFunc(h.me))))
+// NewRouter builds the complete HTTP mux with all routes and middleware.
+// Public auth routes: 5 req/s per IP, burst 20.
+// Protected API routes: same rate limit, all behind JWT middleware.
+func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
+	mux := http.NewServeMux()
+	rl := RateLimiter(rate.Limit(5), 20)
+	auth := func(h http.Handler) http.Handler { return rl(JWTMiddleware(jwtSecret, h)) }
+
+	// — Public auth routes —
+	ah := &authHandler{auth: svcs.Auth}
+	mux.Handle("POST /api/register", rl(http.HandlerFunc(ah.register)))
+	mux.Handle("POST /api/login", rl(http.HandlerFunc(ah.login)))
+	mux.Handle("POST /api/refresh", rl(http.HandlerFunc(ah.refresh)))
+	mux.Handle("GET /api/me", auth(http.HandlerFunc(ah.me)))
+
+	// — Protected movie routes —
+	if svcs.Movies != nil {
+		mh := &movieHandler{movies: svcs.Movies}
+		mux.Handle("GET /api/v1/movies", auth(http.HandlerFunc(mh.list)))
+		mux.Handle("POST /api/v1/movies", auth(http.HandlerFunc(mh.create)))
+		mux.Handle("GET /api/v1/movies/{id}", auth(http.HandlerFunc(mh.get)))
+		mux.Handle("PUT /api/v1/movies/{id}", auth(http.HandlerFunc(mh.update)))
+		mux.Handle("DELETE /api/v1/movies/{id}", auth(http.HandlerFunc(mh.delete)))
+		mux.Handle("PUT /api/v1/movies/{id}/watch", auth(http.HandlerFunc(mh.watch)))
+	}
+
+	// — Stats —
+	if svcs.Stats != nil {
+		sh := &statsHandler{stats: svcs.Stats}
+		mux.Handle("GET /api/v1/stats", auth(http.HandlerFunc(sh.get)))
+	}
+
+	// — Sync —
+	if svcs.Movies != nil {
+		syh := &syncHandler{movies: svcs.Movies}
+		mux.Handle("GET /api/v1/sync", auth(http.HandlerFunc(syh.export)))
+		mux.Handle("POST /api/v1/sync", auth(http.HandlerFunc(syh.importData)))
+	}
 
 	return mux
 }
+

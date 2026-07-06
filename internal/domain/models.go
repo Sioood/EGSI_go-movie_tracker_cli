@@ -3,32 +3,32 @@ package domain
 import "time"
 
 type User struct {
-	ID           string
-	Email        string
-	PasswordHash string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string    `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type Movie struct {
-	ID         string
-	UserID     string
-	Title      string
-	Year       int
-	ExternalID string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	Title      string    `json:"title"`
+	Year       int       `json:"year"`
+	ExternalID string    `json:"external_id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type WatchEntry struct {
-	ID          string
-	MovieID     string
-	Watched     bool
-	Rating      *float64
-	RatingScale int
-	Review      string
-	WatchedAt   *time.Time
-	UpdatedAt   time.Time
+	ID          string     `json:"id"`
+	MovieID     string     `json:"movie_id"`
+	Watched     bool       `json:"watched"`
+	Rating      *float64   `json:"rating"`
+	RatingScale int        `json:"rating_scale"`
+	Review      string     `json:"review"`
+	WatchedAt   *time.Time `json:"watched_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type MovieFilter string
@@ -57,22 +57,22 @@ type MovieSearchParams struct {
 }
 
 type MonthBucket struct {
-	Year  int
-	Month time.Month
-	Count int
+	Year  int        `json:"year"`
+	Month time.Month `json:"month"`
+	Count int        `json:"count"`
 }
 
 type MovieRating struct {
-	Movie  Movie
-	Rating float64
+	Movie  Movie   `json:"movie"`
+	Rating float64 `json:"rating"`
 }
 
 type Stats struct {
-	TotalMovies   int
-	TotalWatched  int
-	TotalRated    int
-	AverageRating float64
-	BestMovies    []MovieRating
-	WorstMovies   []MovieRating
-	ByMonth       []MonthBucket
+	TotalMovies   int           `json:"total_movies"`
+	TotalWatched  int           `json:"total_watched"`
+	TotalRated    int           `json:"total_rated"`
+	AverageRating float64       `json:"average_rating"`
+	BestMovies    []MovieRating `json:"best_movies"`
+	WorstMovies   []MovieRating `json:"worst_movies"`
+	ByMonth       []MonthBucket `json:"by_month"`
 }

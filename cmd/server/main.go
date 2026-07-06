@@ -41,7 +41,13 @@ func main() {
 	defer db.Close()
 
 	userRepo := repository.NewUserRepository(db)
+	movieRepo := repository.NewMovieRepository(db)
+	watchEntryRepo := repository.NewWatchEntryRepository(db)
+	statsRepo := repository.NewStatsRepository(db)
+
 	authSvc := service.NewAuthService(userRepo, jwtSecret)
+	movieSvc := service.NewMovieService(movieRepo, watchEntryRepo)
+	statsSvc := service.NewStatsService(statsRepo)
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {
@@ -55,7 +61,11 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Handler:      server.NewRouter(authSvc, jwtSecret),
+		Handler: server.NewRouter(server.Services{
+			Auth:   authSvc,
+			Movies: movieSvc,
+			Stats:  statsSvc,
+		}, jwtSecret),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,

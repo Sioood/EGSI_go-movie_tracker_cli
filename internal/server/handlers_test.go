@@ -37,7 +37,7 @@ func newTestRouter(t *testing.T) http.Handler {
 
 	userRepo := repository.NewUserRepository(db)
 	authSvc := service.NewAuthService(userRepo, testSecret)
-	return server.NewRouter(authSvc, testSecret)
+	return server.NewRouter(server.Services{Auth: authSvc}, testSecret)
 }
 
 func postJSON(t *testing.T, router http.Handler, path string, body any) *httptest.ResponseRecorder {
@@ -241,7 +241,7 @@ func TestMeWrongSecret(t *testing.T) {
 
 	// Sign a token with a different secret — it should be rejected.
 	otherRouter := server.NewRouter(
-		service.NewAuthService(repository.NewUserRepository(nil), []byte("wrong-secret")),
+		server.Services{Auth: service.NewAuthService(repository.NewUserRepository(nil), []byte("wrong-secret"))},
 		[]byte("wrong-secret"),
 	)
 	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
