@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 4** — recherche, filtres et tri dans la TUI.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 7** — API REST films authentifiée.
 
-**Dernière mise à jour** : 2026-07-05  
-**Phase en cours** : Phase 5 — Statistiques
+**Dernière mise à jour** : 2026-07-08  
+**Phase en cours** : Phase 8 — Connexion TUI ↔ serveur
 
-**Progression globale** : `5 / 14` phases terminées
+**Progression globale** : `8 / 14` phases terminées
 
 ---
 
@@ -16,9 +16,9 @@
 - [x] **Phase 2** — [TUI navigation](#phase-2--tui--coquille-et-navigation) · P0 · Moyen-Difficile · ~4j
 - [x] **Phase 3** — [CRUD films TUI](#phase-3--gestion-films-dans-la-tui) · P0 · Moyen · ~3j
 - [x] **Phase 4** — [Recherche / filtres](#phase-4--recherche-et-filtres) · P1 · Moyen · ~2j
-- [ ] **Phase 5** — [Statistiques](#phase-5--statistiques) · P1 · Moyen · ~2j
-- [ ] **Phase 6** — [Auth serveur](#phase-6--authentification-serveur) · P0 · Moyen-Difficile · ~4j
-- [ ] **Phase 7** — [API REST](#phase-7--api-rest-films) · P0 · Moyen · ~3j
+- [x] **Phase 5** — [Statistiques](#phase-5--statistiques) · P1 · Moyen · ~2j
+- [x] **Phase 6** — [Auth serveur](#phase-6--authentification-serveur) · P0 · Moyen-Difficile · ~4j
+- [x] **Phase 7** — [API REST](#phase-7--api-rest-films) · P0 · Moyen · ~3j
 - [ ] **Phase 8** — [Login TUI](#phase-8--connexion-tui--serveur) · P0 · Moyen · ~2j
 - [ ] **Phase 9** — [Sync hybride](#phase-9--sync-hybride) · P0 · Difficile · ~5j
 - [ ] **Phase 10** — [Polish](#phase-10--robustesse-et-polish) · P1 · Moyen · ~3j
@@ -182,64 +182,85 @@ make run-server
 
 ## Phase 5 — Statistiques
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P1 | **Difficulté** : Moyen | **Temps** : ~2 jours
 
 #### Tâches
 
-- [ ] StatsService : totaux, moyenne, best/worst
-- [ ] Histogramme ASCII par mois
-- [ ] Écran TUI Stats
+- [x] StatsService : totaux, moyenne, best/worst
+- [x] Histogramme ASCII par mois
+- [x] Écran TUI Stats
 
 #### Livrables
 
-- [ ] Stats alimentées par la DB
+- [x] Stats alimentées par la DB
+
+#### Fichiers livrés
+
+`internal/service/stats_service.go`, `internal/repository/stats_repository.go`, `internal/repository/stats_repository_test.go`, `internal/tui/view.go`, `internal/tui/model.go`, `cmd/cli/main.go`
 
 ---
 
 ## Phase 6 — Authentification serveur
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen-Difficile | **Temps** : ~4 jours
 
 #### Tâches
 
-- [ ] Argon2id (`alexedwards/argon2id`)
-- [ ] POST register, login, refresh
-- [ ] Middleware JWT
-- [ ] Validation email + password min 8
-- [ ] Tests httptest
-- [ ] JWT_SECRET env, rate limiting
+- [x] Argon2id (`alexedwards/argon2id`)
+- [x] POST register, login, refresh
+- [x] Middleware JWT
+- [x] Validation email + password min 8
+- [x] Tests httptest
+- [x] JWT_SECRET env, rate limiting
 
 #### Hash Argon2id
 
-- [ ] HashPassword, ComparePassword, format PHC
+- [x] HashPassword, ComparePassword, format PHC
 
 #### Livrables
 
-- [ ] Register/login via curl
+- [x] Register/login via curl
+
+#### Fichiers livrés
+
+`internal/auth/hash.go`, `internal/auth/token.go`, `internal/service/auth_service.go`, `internal/repository/user_repository.go`, `internal/server/handlers.go`, `internal/server/middleware.go`, `internal/server/context.go`, `internal/server/handlers_test.go`, `cmd/server/main.go`
 
 ---
 
 ## Phase 7 — API REST films
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen | **Temps** : ~3 jours
 
-| Méthode | Route | Action |
-|---------|-------|--------|
-| GET | /api/v1/movies | Liste |
-| POST | /api/v1/movies | Créer |
-| GET | /api/v1/movies/{id} | Détail |
-| PUT | /api/v1/movies/{id} | Modifier |
-| DELETE | /api/v1/movies/{id} | Supprimer |
-| PUT | /api/v1/movies/{id}/watch | Watch |
-| GET | /api/v1/stats | Stats |
-| GET/POST | /api/v1/sync | Sync |
+| Méthode | Route | Action | Statut |
+|---------|-------|--------|--------|
+| GET | /api/v1/movies | Liste | [x] |
+| POST | /api/v1/movies | Créer | [x] |
+| GET | /api/v1/movies/{id} | Détail | [x] |
+| PUT | /api/v1/movies/{id} | Modifier | [x] |
+| DELETE | /api/v1/movies/{id} | Supprimer | [x] |
+| PUT | /api/v1/movies/{id}/watch | Watch | [x] |
+| GET | /api/v1/stats | Stats | [x] |
+| GET/POST | /api/v1/sync | Sync | [x] |
+
+#### Tâches
+
+- [x] Handlers CRUD films + recherche/filtres/tri (query params)
+- [x] Handler watch (note, critique, date)
+- [x] Handler stats
+- [x] Handlers sync export/import
+- [x] Isolation par utilisateur (JWT claims)
+- [x] Tests httptest (`movie_handlers_test.go`)
 
 #### Livrables
 
-- [ ] CRUD API authentifié
+- [x] CRUD API authentifié
+
+#### Fichiers livrés
+
+`internal/server/server.go`, `internal/server/movie_handlers.go`, `internal/server/stats_handlers.go`, `internal/server/sync_handlers.go`, `internal/server/movie_handlers_test.go`, `internal/database/migrations/server/002_movies_watch_entries.sql`
 
 ---
 
@@ -319,13 +340,13 @@ make run-server
 | # | Feature | Priorité | Statut | Dépend de |
 |---|---------|----------|--------|-----------|
 | 0 | Fondations | P0 | [x] | — |
-| 1 | SQLite local | P0 | [ ] | 0 |
-| 2 | TUI navigation | P0 | [ ] | 0 |
-| 3 | CRUD films TUI | P0 | [ ] | 1, 2 |
-| 4 | Recherche / filtres | P1 | [ ] | 3 |
-| 5 | Statistiques | P1 | [ ] | 1, 2 |
-| 6 | Auth serveur | P0 | [ ] | 0 |
-| 7 | API REST | P0 | [ ] | 1, 6 |
+| 1 | SQLite local | P0 | [x] | 0 |
+| 2 | TUI navigation | P0 | [x] | 0 |
+| 3 | CRUD films TUI | P0 | [x] | 1, 2 |
+| 4 | Recherche / filtres | P1 | [x] | 3 |
+| 5 | Statistiques | P1 | [x] | 1, 2 |
+| 6 | Auth serveur | P0 | [x] | 0 |
+| 7 | API REST | P0 | [x] | 1, 6 |
 | 8 | Login TUI | P0 | [ ] | 2, 6 |
 | 9 | Sync hybride | P0 | [ ] | 7, 8 |
 | 10 | Polish | P1 | [ ] | 9 |
@@ -337,4 +358,4 @@ make run-server
 
 ## Prochaine étape
 
-**Phase 1** — Repositories SQLite + MovieService + tests.
+**Phase 8** — Connexion TUI ↔ serveur : AuthClient HTTP, écrans Login/Register fonctionnels, config `~/.movietracker/` persistée, mode `offline_mode`.
