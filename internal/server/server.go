@@ -10,9 +10,10 @@ import (
 
 // Services groups all application services needed by the HTTP layer.
 type Services struct {
-	Auth   *service.AuthService
-	Movies *service.MovieService
-	Stats  *service.StatsService
+	Auth    *service.AuthService
+	Movies  *service.MovieService
+	Stats   *service.StatsService
+	Backups *service.BackupService
 }
 
 // NewRouter builds the complete HTTP mux with all routes and middleware.
@@ -54,6 +55,17 @@ func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
 		syh := &syncHandler{movies: svcs.Movies}
 		mux.Handle("GET /api/v1/sync", auth(http.HandlerFunc(syh.export)))
 		mux.Handle("POST /api/v1/sync", auth(http.HandlerFunc(syh.importData)))
+	}
+
+	// — Backup config/state —
+	if svcs.Backups != nil {
+		bh := &backupHandler{backups: svcs.Backups}
+		mux.Handle("GET /api/v1/backup/config", auth(http.HandlerFunc(bh.exportConfig)))
+		mux.Handle("PUT /api/v1/backup/config", auth(http.HandlerFunc(bh.importConfig)))
+		mux.Handle("GET /api/v1/backup/state", auth(http.HandlerFunc(bh.exportState)))
+		mux.Handle("PUT /api/v1/backup/state", auth(http.HandlerFunc(bh.importState)))
+		mux.Handle("GET /api/v1/backup", auth(http.HandlerFunc(bh.exportSnapshot)))
+		mux.Handle("PUT /api/v1/backup", auth(http.HandlerFunc(bh.importSnapshot)))
 	}
 
 	return mux

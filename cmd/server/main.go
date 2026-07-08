@@ -55,14 +55,20 @@ func main() {
 	movieRepo := repository.NewMovieRepository(db)
 	watchEntryRepo := repository.NewWatchEntryRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
+	backupRepo := repository.NewBackupRepository(db)
 
 	authSvc := service.NewAuthService(userRepo, jwtSecret)
 	movieSvc := service.NewMovieService(movieRepo, watchEntryRepo)
 	statsSvc := service.NewStatsService(statsRepo)
+	backupSvc := service.NewBackupService(backupRepo)
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {
-		addr = ":8080"
+		if port := os.Getenv("PORT"); port != "" {
+			addr = ":" + port
+		} else {
+			addr = ":8080"
+		}
 	}
 
 	ln, err := net.Listen("tcp", addr)
@@ -73,9 +79,10 @@ func main() {
 
 	srv := &http.Server{
 		Handler: server.NewRouter(server.Services{
-			Auth:   authSvc,
-			Movies: movieSvc,
-			Stats:  statsSvc,
+			Auth:    authSvc,
+			Movies:  movieSvc,
+			Stats:   statsSvc,
+			Backups: backupSvc,
 		}, jwtSecret),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,

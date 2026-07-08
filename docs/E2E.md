@@ -29,6 +29,8 @@ make run-server   # terminal 1
 make run-cli      # terminal 2
 ```
 
+Fichiers utilisateur : `~/.config/movietracker/config.json`, `state.json`, `session.json`.
+
 ---
 
 ## 1. Mode hors ligne

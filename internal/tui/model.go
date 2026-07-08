@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/movietracker/movie-tracker/internal/apperrors"
+	"github.com/movietracker/movie-tracker/internal/config"
 	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/service"
 	"github.com/movietracker/movie-tracker/internal/tui/messages"
@@ -48,12 +49,18 @@ type UserInfo struct {
 type Options struct {
 	MovieService  MovieClient
 	Auth          AuthClient
+	Backup        BackupClient
 	SyncRunner    SyncRunner
 	ResolveUserID func() string
 	State         AppState
+	InitialRoute  Route
+	InitialFilter domain.MovieFilter
+	InitialSort   domain.MovieSort
 	SaveConfig    func(Config) error
+	SaveState     func(config.State) error
 	SaveSession   func(SessionState) error
 	ClearSession  func() error
+	ExportLocal   func(BackupSnapshot) (string, error)
 }
 
 type authResultMsg struct {
@@ -70,9 +77,13 @@ type Model struct {
 	height               int
 	service              MovieClient
 	auth                 AuthClient
+	backup               BackupClient
 	saveConfig           func(Config) error
+	saveState            func(config.State) error
+	exportLocal          func(BackupSnapshot) (string, error)
 	saveSession          func(SessionState) error
 	clearSession         func() error
+	styles               ThemeStyles
 	syncRunner           SyncRunner
 	resolveUserID        func() string
 	syncStatus           SyncStatus
@@ -108,6 +119,7 @@ type Model struct {
 	message              string
 	messageKind          messages.Kind
 	authLoading          bool
+	backupLoading        bool
 }
 
 func (m *Model) setMessage(kind messages.Kind, text string) {
@@ -141,6 +153,20 @@ func New(opts Options) Model {
 	if state.Config.Theme == "" {
 		state = defaultState()
 	}
+	state.Config.Theme = NormalizeTheme(state.Config.Theme)
+
+	initialRoute := opts.InitialRoute
+	if initialRoute == "" {
+		initialRoute = RouteSplash
+	}
+	initialFilter := opts.InitialFilter
+	if initialFilter == "" {
+		initialFilter = domain.MovieFilterAll
+	}
+	initialSort := opts.InitialSort
+	if initialSort == "" {
+		initialSort = domain.MovieSortTitle
+	}
 
 	themeInput := newTextInput(messages.UI.ThemePlaceholder, 32)
 	themeInput.SetValue(state.Config.Theme)
@@ -164,13 +190,17 @@ func New(opts Options) Model {
 	reviewInput.SetHeight(6)
 
 	model := Model{
-		route:                RouteSplash,
+		route:                initialRoute,
 		state:                state,
 		service:              movieService,
 		auth:                 opts.Auth,
+		backup:               opts.Backup,
 		saveConfig:           opts.SaveConfig,
+		saveState:            opts.SaveState,
+		exportLocal:          opts.ExportLocal,
 		saveSession:          opts.SaveSession,
 		clearSession:         opts.ClearSession,
+		styles:               BuildThemeStyles(state.Config.Theme),
 		syncRunner:           opts.SyncRunner,
 		resolveUserID:        opts.ResolveUserID,
 		syncStatus:           SyncStatusIdle,
@@ -188,11 +218,12 @@ func New(opts Options) Model {
 		ratingInput:          ratingInput,
 		watchedAtInput:       watchedAtInput,
 		reviewInput:          reviewInput,
-		filter:               domain.MovieFilterAll,
-		sort:                 domain.MovieSortTitle,
+		filter:               initialFilter,
+		sort:                 initialSort,
 	}
 	model.refreshMovies()
 	model.refreshPendingCount()
+	model.applyTheme()
 	return model
 }
 
@@ -233,6 +264,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.startSync()
 	case syncResultMsg:
 		return m.handleSyncResult(msg)
+	case backupResultMsg:
+		return m.handleBackupResult(msg)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -279,6 +312,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "ctrl+c":
+		m.persistState()
 		return m, tea.Quit
 	case "esc":
 		if m.route == RouteRegister {
@@ -315,6 +349,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "q":
+		m.persistState()
 		return m, tea.Quit
 	case "?":
 		m.goTo(RouteHelp)
@@ -394,11 +429,13 @@ func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.filter = nextMovieFilter(m.filter)
 		m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.FilterFmt, messages.FilterLabel(m.filter)))
 		m.refreshMovies()
+		m.persistState()
 		return m, nil
 	case "t":
 		m.sort = nextMovieSort(m.sort)
 		m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.SortFmt, messages.SortLabel(m.sort)))
 		m.refreshMovies()
+		m.persistState()
 		return m, nil
 	case "c":
 		m.searchInput.SetValue("")
@@ -406,6 +443,7 @@ func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.sort = domain.MovieSortTitle
 		m.setMessage(messages.KindInfo, messages.UI.FiltersReset)
 		m.refreshMovies()
+		m.persistState()
 		return m, nil
 	case "a":
 		m.prepareMovieForm()
@@ -463,10 +501,28 @@ func (m Model) updateMovieForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.backupLoading {
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "tab", "shift+tab":
 		m.settingsFocus = (m.settingsFocus + 1) % 2
 		m.focusSettings()
+		return m, nil
+	case "left", "h":
+		if m.settingsFocus == 0 {
+			m.state.Config.Theme = PrevTheme(m.state.Config.Theme)
+			m.applyTheme()
+			m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.ThemeChangedFmt, m.state.Config.Theme))
+		}
+		return m, nil
+	case "right", "l":
+		if m.settingsFocus == 0 {
+			m.state.Config.Theme = NextTheme(m.state.Config.Theme)
+			m.applyTheme()
+			m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.ThemeChangedFmt, m.state.Config.Theme))
+		}
 		return m, nil
 	case "o":
 		m.state.Config.OfflineMode = !m.state.Config.OfflineMode
@@ -491,40 +547,71 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.setMessage(messages.KindSuccess, messages.UI.LoggedOut)
 		}
 		return m, nil
+	case "e":
+		if m.state.Config.OfflineMode || !m.state.Session.Authenticated {
+			m.setMessage(messages.KindError, messages.UI.BackupNeedAuth)
+			return m, nil
+		}
+		if m.backup == nil {
+			m.setMessage(messages.KindError, messages.UI.BackupUnavailable)
+			return m, nil
+		}
+		m.backupLoading = true
+		m.setMessage(messages.KindInfo, messages.UI.BackupExporting)
+		return m, importBackupCmd(m.backup, m.state.Session.AccessToken, m.currentBackupSnapshot())
+	case "i":
+		if m.state.Config.OfflineMode || !m.state.Session.Authenticated {
+			m.setMessage(messages.KindError, messages.UI.BackupNeedAuth)
+			return m, nil
+		}
+		if m.backup == nil {
+			m.setMessage(messages.KindError, messages.UI.BackupUnavailable)
+			return m, nil
+		}
+		m.backupLoading = true
+		m.setMessage(messages.KindInfo, messages.UI.BackupImporting)
+		return m, exportBackupCmd(m.backup, m.state.Session.AccessToken)
+	case "E":
+		if m.exportLocal == nil {
+			m.setMessage(messages.KindError, messages.UI.BackupUnavailable)
+			return m, nil
+		}
+		dir, err := m.exportLocal(m.currentBackupSnapshot())
+		if err != nil {
+			m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.SaveFailedFmt, messages.UserMessage(err)))
+			return m, nil
+		}
+		m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.BackupLocalExportFmt, dir))
+		return m, nil
 	case "enter", "ctrl+s":
 		return m.saveSettings()
 	}
 
-	var cmd tea.Cmd
-	switch m.settingsFocus {
-	case 0:
-		m.themeInput, cmd = m.themeInput.Update(msg)
-	default:
+	if m.settingsFocus == 1 {
+		var cmd tea.Cmd
 		m.serverURLInput, cmd = m.serverURLInput.Update(msg)
+		return m, cmd
 	}
-	return m, cmd
+	return m, nil
 }
 
 func (m Model) saveSettings() (tea.Model, tea.Cmd) {
-	theme := strings.TrimSpace(m.themeInput.Value())
-	if theme == "" {
-		m.setMessage(messages.KindError, messages.UI.ThemeEmpty)
-		return m, nil
-	}
 	serverURL := strings.TrimSpace(m.serverURLInput.Value())
 	if serverURL == "" {
 		m.setMessage(messages.KindError, messages.UI.ServerURLEmpty)
 		return m, nil
 	}
 
-	m.state.Config.Theme = theme
+	m.state.Config.Theme = NormalizeTheme(m.state.Config.Theme)
 	m.state.Config.ServerURL = serverURL
+	m.applyTheme()
 	if m.saveConfig != nil {
 		if err := m.saveConfig(m.state.Config); err != nil {
 			m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.SaveFailedFmt, messages.UserMessage(err)))
 			return m, nil
 		}
 	}
+	m.persistState()
 	m.setMessage(messages.KindSuccess, messages.UI.SettingsSaved)
 	return m, nil
 }
@@ -726,13 +813,12 @@ func (m Model) updateActiveBubble(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.movies, cmd = m.movies.Update(msg)
 		return m, cmd
 	case RouteSettings:
-		var cmd tea.Cmd
-		if m.settingsFocus == 0 {
-			m.themeInput, cmd = m.themeInput.Update(msg)
-		} else {
+		if m.settingsFocus == 1 {
+			var cmd tea.Cmd
 			m.serverURLInput, cmd = m.serverURLInput.Update(msg)
+			return m, cmd
 		}
-		return m, cmd
+		return m, nil
 	case RouteLogin:
 		var cmd tea.Cmd
 		if m.loginFocus == 0 {
@@ -777,7 +863,6 @@ func (m *Model) goTo(route Route) {
 	case RouteStats:
 		m.refreshStats()
 	case RouteSettings:
-		m.themeInput.SetValue(m.state.Config.Theme)
 		m.serverURLInput.SetValue(m.state.Config.ServerURL)
 		m.settingsFocus = 0
 		m.focusSettings()
@@ -797,6 +882,7 @@ func (m *Model) goTo(route Route) {
 	case RouteMovieDetail:
 		m.focusMovieDetail()
 	}
+	m.persistState()
 }
 
 func (m *Model) clearFocus() {
@@ -815,9 +901,7 @@ func (m *Model) clearFocus() {
 
 func (m *Model) focusSettings() {
 	m.clearFocus()
-	if m.settingsFocus == 0 {
-		m.themeInput.Focus()
-	} else {
+	if m.settingsFocus == 1 {
 		m.serverURLInput.Focus()
 	}
 }

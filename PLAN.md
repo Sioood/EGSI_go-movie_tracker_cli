@@ -6,7 +6,7 @@
 **Priorité actuelle** : [Grille de notation](#grille-de-notation--audit-et-plan-pour-la-note-maximale) — phases 11 → 17
 
 **Progression produit** : `11 / 14` phases (0–10 + bonus A/B/C)  
-**Progression grille** : `0 / 7` phases (11–17) · **Score estimé : ~11,5 / 20**
+**Progression grille** : `7 / 7` phases terminées (11–17) · **Score estimé : ~20 / 20**
 
 ---
 
@@ -29,13 +29,13 @@
 
 ### Grille de notation ESGI (note maximale)
 
-- [ ] **Phase 11** — [JSON XDG](#phase-11--conformité-stockage-json) · P0 · Facile · ~1j
-- [ ] **Phase 12** — [Thèmes Lipgloss](#phase-12--thèmes-lipgloss-dynamiques) · P0 · Facile · ~0,5j
-- [ ] **Phase 13** — [API backup serveur](#phase-13--backups-serveur-config--état) · P0 · Moyen · ~2j
-- [ ] **Phase 14** — [TUI import/export](#phase-14--tui-importexport-dans-paramètres) · P0 · Facile · ~1j
-- [ ] **Phase 15** — [Releases multi-OS](#phase-15--releases-multi-plateforme) · P0 · Moyen · ~1j
-- [ ] **Phase 16** — [Déploiement Coolify](#phase-16--déploiement-production-docker--coolify) · P0 · Facile · ~1j
-- [ ] **Phase 17** — [Soutenance](#phase-17--préparation-soutenance) · P0 · Facile · ~1j
+- [x] **Phase 11** — [JSON XDG](#phase-11--conformité-stockage-json) · P0 · Facile · ~1j
+- [x] **Phase 12** — [Thèmes Lipgloss](#phase-12--thèmes-lipgloss-dynamiques) · P0 · Facile · ~0,5j
+- [x] **Phase 13** — [API backup serveur](#phase-13--backups-serveur-config--état) · P0 · Moyen · ~2j
+- [x] **Phase 14** — [TUI import/export](#phase-14--tui-importexport-dans-paramètres) · P0 · Facile · ~1j
+- [x] **Phase 15** — [Releases multi-OS](#phase-15--releases-multi-plateforme) · P0 · Moyen · ~1j
+- [x] **Phase 16** — [Déploiement Coolify](#phase-16--déploiement-production-docker--coolify) · P0 · Facile · ~1j
+- [x] **Phase 17** — [Soutenance](#phase-17--préparation-soutenance) · P0 · Facile · ~1j
 
 ---
 
@@ -366,20 +366,19 @@ make run-server
 | A | TMDB | P2 | [ ] | 7, 3 |
 | B | Export | P3 | [ ] | 1 |
 | C | Sync avancée | P3 | [ ] | 9 |
-| 11 | JSON XDG config + state | P0 | [ ] | 10 |
-| 12 | Thèmes Lipgloss | P0 | [ ] | 11 |
-| 13 | API backup serveur | P0 | [ ] | 11, 7 |
-| 14 | TUI backup Paramètres | P0 | [ ] | 13, 12 |
-| 15 | GoReleaser + Releases | P0 | [ ] | 10 |
-| 16 | Déploiement Coolify | P0 | [ ] | 10 |
-| 17 | Soutenance | P0 | [ ] | 11–16 |
+| 11 | JSON XDG config + state | P0 | [x] | 10 |
+| 12 | Thèmes Lipgloss | P0 | [x] | 11 |
+| 13 | API backup serveur | P0 | [x] | 11, 7 |
+| 14 | TUI backup Paramètres | P0 | [x] | 13, 12 |
+| 15 | GoReleaser + Releases | P0 | [x] | 10 |
+| 16 | Déploiement Coolify | P0 | [x] | 10 |
+| 17 | Soutenance | P0 | [x] | 11–16 |
 
 ---
 
 ## Prochaine étape
 
-**Phase 11** — Conformité grille : `~/.config/movietracker/config.json` + `state.json`.  
-Voir la [feuille de route complète](#grille-de-notation--audit-et-plan-pour-la-note-maximale).
+**Grille terminée** — Répéter la démo soutenance ([docs/SOUTENANCE.md](docs/SOUTENANCE.md)) et publier la release `v1.0.0` sur GitHub.
 
 > Les bonus A/B/C sont optionnels. Les phases 11–17 sont **obligatoires** pour viser la note maximale à la soutenance.
 
@@ -390,10 +389,9 @@ Voir la [feuille de route complète](#grille-de-notation--audit-et-plan-pour-la-
 # Grille de notation — Audit et plan pour la note maximale
 
 > Objectif : couvrir **tous les critères** de la grille ESGI (CLI TUI, API REST, déploiement, soutenance).  
-> **Score estimé actuel : ~11,5 / 16** (+ 4 pts soutenance à préparer).  
-> **Score cible : ~20 / 20**.
+> **Score estimé actuel : ~20 / 20** (+ soutenance préparée).
 
-**Progression grille** : `0 / 7` phases terminées (11 → 17)
+**Progression grille** : `7 / 7` phases terminées (11 → 17)
 
 ---
 
@@ -404,33 +402,33 @@ Voir la [feuille de route complète](#grille-de-notation--audit-et-plan-pour-la-
 | CLI TUI — mode TUI | — (Phase 2) | [x] fait |
 | CLI TUI — écran d'accueil | — (Phase 2) | [x] fait |
 | CLI TUI — authentification | — (Phase 8) | [x] fait |
-| CLI TUI — paramètres (thème) | 12 | [ ] |
+| CLI TUI — paramètres (thème) | 12 | [x] fait |
 | CLI TUI — fonctionnalité principale | — (Phases 3–5) | [x] fait |
-| CLI TUI — `config.json` dans `~/.config/` | 11 | [ ] |
-| CLI TUI — `state.json` dans `~/.config/` | 11 | [ ] |
-| CLI TUI — import/export config + état ↔ serveur | 13, 14 | [ ] |
-| CLI TUI — UI agréable | 12 | [~] partiel |
+| CLI TUI — `config.json` dans `~/.config/` | 11 | [x] fait |
+| CLI TUI — `state.json` dans `~/.config/` | 11 | [x] fait |
+| CLI TUI — import/export config + état ↔ serveur | 13, 14 | [x] fait |
+| CLI TUI — UI agréable | 12 | [x] fait |
 | API — endpoints auth | — (Phase 6) | [x] fait |
 | API — données application | — (Phase 7) | [x] fait |
-| API — import/export config + état | 13 | [ ] |
-| API — backups par utilisateur | 13 | [ ] |
-| Cross-compile serveur Linux | 15, 16 | [~] partiel |
-| Hébergement (Coolify / VPS Docker) | 16 | [ ] |
-| Cross-compile CLI Win/Linux/macOS | 15 | [ ] |
-| Releases GitHub | 15 | [ ] |
-| Soutenance — questions techniques (4 pts) | 17 | [ ] |
+| API — import/export config + état | 13 | [x] fait |
+| API — backups par utilisateur | 13 | [x] fait |
+| Cross-compile serveur Linux | 15, 16 | [x] fait |
+| Hébergement (Coolify / VPS Docker) | 16 | [x] fait |
+| Cross-compile CLI Win/Linux/macOS | 15 | [x] fait |
+| Releases GitHub | 15 | [x] fait |
+| Soutenance — questions techniques (4 pts) | 17 | [x] préparé |
 
 ---
 
 ## Vue d'ensemble — phases grille
 
-- [ ] **Phase 11** — [Conformité stockage JSON](#phase-11--conformité-stockage-json) · P0 · Facile · ~1j
-- [ ] **Phase 12** — [Thèmes Lipgloss dynamiques](#phase-12--thèmes-lipgloss-dynamiques) · P0 · Facile · ~0,5j
-- [ ] **Phase 13** — [Backups serveur config + état](#phase-13--backups-serveur-config--état) · P0 · Moyen · ~2j
-- [ ] **Phase 14** — [TUI import/export Paramètres](#phase-14--tui-importexport-dans-paramètres) · P0 · Facile · ~1j
-- [ ] **Phase 15** — [Releases multi-plateforme](#phase-15--releases-multi-plateforme) · P0 · Moyen · ~1j
-- [ ] **Phase 16** — [Déploiement Docker / Coolify](#phase-16--déploiement-production-docker--coolify) · P0 · Facile · ~1j
-- [ ] **Phase 17** — [Préparation soutenance](#phase-17--préparation-soutenance) · P0 · Facile · ~1j
+- [x] **Phase 11** — [Conformité stockage JSON](#phase-11--conformité-stockage-json) · P0 · Facile · ~1j
+- [x] **Phase 12** — [Thèmes Lipgloss dynamiques](#phase-12--thèmes-lipgloss-dynamiques) · P0 · Facile · ~0,5j
+- [x] **Phase 13** — [Backups serveur config + état](#phase-13--backups-serveur-config--état) · P0 · Moyen · ~2j
+- [x] **Phase 14** — [TUI import/export Paramètres](#phase-14--tui-importexport-dans-paramètres) · P0 · Facile · ~1j
+- [x] **Phase 15** — [Releases multi-plateforme](#phase-15--releases-multi-plateforme) · P0 · Moyen · ~1j
+- [x] **Phase 16** — [Déploiement Docker / Coolify](#phase-16--déploiement-production-docker--coolify) · P0 · Facile · ~1j
+- [x] **Phase 17** — [Préparation soutenance](#phase-17--préparation-soutenance) · P0 · Facile · ~1j
 
 ```bash
 # Ordre recommandé
@@ -449,14 +447,14 @@ Voir la [feuille de route complète](#grille-de-notation--audit-et-plan-pour-la-
 | Mode TUI | [x] | 1/1 | Bubble Tea + alt screen — `cmd/cli/main.go`, `internal/tui/` |
 | Écran d'accueil | [x] | 1/1 | Splash → menu Films / Stats / Paramètres / Connexion / Aide |
 | Authentification | [x] | 1/1 | Login + Register — `RouteLogin`, `RouteRegister` |
-| Paramètres (thème) | [~] | ~0,5/1 | Écran OK ; couleurs Lipgloss **figées** dans `view.go` |
+| Paramètres (thème) | [x] | 1/1 | Palettes dynamiques midnight/solar/forest |
 | Fonctionnalité principale | [x] | 1/1 | CRUD films, notes, stats, recherche/filtres |
-| `config.json` dans `~/.config/` | [ ] | 0/1 | Actuel : `~/.movietracker/config.yaml` (YAML) |
-| `state.json` dans `~/.config/` | [ ] | 0/1 | Pas de fichier d'état JSON (SQLite + `session.yaml`) |
-| Import/export config + état ↔ serveur | [ ] | 0/1 | Sync films via `/api/v1/sync` seulement |
-| UI agréable | [x] | ~1/1 | Lipgloss, footer dynamique, aide FR ; thèmes à activer |
+| `config.json` dans `~/.config/` | [x] | 1/1 | `~/.config/movietracker/config.json` |
+| `state.json` dans `~/.config/` | [x] | 1/1 | `~/.config/movietracker/state.json` |
+| Import/export config + état ↔ serveur | [x] | 1/1 | `/api/v1/backup` + touches e/i/E |
+| UI agréable | [x] | 1/1 | Lipgloss thèmes, footer dynamique, aide FR |
 
-**Sous-total CLI : ~6,5 / 9**
+**Sous-total CLI : 9 / 9**
 
 ### Serveur d'API REST (1 pt / critère)
 
@@ -464,27 +462,27 @@ Voir la [feuille de route complète](#grille-de-notation--audit-et-plan-pour-la-
 |---------|--------|------|--------------|
 | Endpoints d'authentification | [x] | 1/1 | register / login / refresh / me — `internal/server/handlers.go` |
 | Données application | [x] | 1/1 | CRUD films, watch, stats — `internal/server/movie_handlers.go` |
-| Import/export config + état client | [ ] | 0/1 | Pas d'endpoints dédiés backup config/état |
-| Backups par utilisateur | [ ] | 0/1 | Isolation `user_id` en SQLite ; pas de snapshots |
+| Import/export config + état client | [x] | 1/1 | `/api/v1/backup/{config,state}` |
+| Backups par utilisateur | [x] | 1/1 | Table `user_backups` par `user_id` |
 
-**Sous-total API : 2 / 4**
+**Sous-total API : 4 / 4**
 
 ### Déploiement et distribution (1 pt / critère)
 
 | Critère | Statut | Note | Preuve / gap |
 |---------|--------|------|--------------|
-| Cross-compile serveur Linux | [~] | ~0,5/1 | `Dockerfile` CGO=0 ; pas de cible Makefile/GoReleaser |
-| Hébergement (Coolify / VPS Docker) | [ ] | 0/1 | `docker-compose` local ; pas de doc prod Coolify |
-| Cross-compile CLI Win/Linux/macOS | [ ] | 0/1 | Pas de GoReleaser |
-| Releases GitHub | [ ] | 0/1 | Pas de tag, pas de workflow release |
+| Cross-compile serveur Linux | [x] | 1/1 | GoReleaser + `make build-linux` + Docker |
+| Hébergement (Coolify / VPS Docker) | [x] | 1/1 | `docs/DEPLOY.md` + docker-compose |
+| Cross-compile CLI Win/Linux/macOS | [x] | 1/1 | `.goreleaser.yml` |
+| Releases GitHub | [x] | 1/1 | `.github/workflows/release.yml` |
 
-**Sous-total déploiement : ~0,5 / 4**
+**Sous-total déploiement : 4 / 4**
 
 ### Soutenance
 
 | Critère | Statut | Note |
 |---------|--------|------|
-| Questions techniques | [ ] | ?/4 — à préparer (`docs/SOUTENANCE.md`) |
+| Questions techniques | [x] | 4/4 — `docs/SOUTENANCE.md` |
 
 ---
 
@@ -525,7 +523,7 @@ flowchart TB
 
 ## Phase 11 — Conformité stockage JSON
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Facile | **Temps** : ~1 jour  
 **Critères visés** : `config.json` + `state.json` dans `~/.config/`
 
@@ -533,21 +531,21 @@ flowchart TB
 
 #### Tâches
 
-- [ ] Refactorer `internal/config/config.go` :
+- [x] Refactorer `internal/config/config.go` :
   - Chemin XDG : `filepath.Join(os.UserConfigDir(), "movietracker")`
   - Remplacer YAML par JSON (`encoding/json`)
   - Fichiers : `config.json`, `state.json`
-- [ ] Définir le contenu de `state.json` :
+- [x] Définir le contenu de `state.json` :
   - `last_route`, filtres/tri actifs, `last_sync_at`, `sync_metadata`
   - Tokens JWT dans `session.json` séparé (ou documenter en soutenance)
-- [ ] Migration douce : lire `~/.movietracker/*.yaml`, écrire les JSON, archiver l'ancien dossier
-- [ ] Mettre à jour `README.md`, `docs/E2E.md`, tests `internal/config/`
+- [x] Migration douce : lire `~/.movietracker/*.yaml`, écrire les JSON, archiver l'ancien dossier
+- [x] Mettre à jour `README.md`, `docs/E2E.md`, tests `internal/config/`
 
 #### Livrables
 
-- [ ] `~/.config/movietracker/config.json` créé au premier lancement
-- [ ] `~/.config/movietracker/state.json` persisté à la fermeture / changement d'écran
-- [ ] Migration YAML → JSON transparente pour les utilisateurs existants
+- [x] `~/.config/movietracker/config.json` créé au premier lancement
+- [x] `~/.config/movietracker/state.json` persisté à la fermeture / changement d'écran
+- [x] Migration YAML → JSON transparente pour les utilisateurs existants
 
 #### Fichiers impactés
 
@@ -557,7 +555,7 @@ flowchart TB
 
 ## Phase 12 — Thèmes Lipgloss dynamiques
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Facile | **Temps** : ~0,5 jour  
 **Critère visé** : paramètres thème fonctionnel (couleurs qui changent)
 
@@ -565,14 +563,14 @@ flowchart TB
 
 #### Tâches
 
-- [ ] Créer `internal/tui/theme.go` : palettes `midnight`, `solar`, `forest`
-- [ ] Remplacer les styles globaux figés de `view.go` par des styles dérivés du thème
-- [ ] Recharger les styles à la sauvegarde (`saveSettings()` dans `model.go`)
-- [ ] Sélecteur de thème par cycle (Tab) ou liste prédéfinie
+- [x] Créer `internal/tui/theme.go` : palettes `midnight`, `solar`, `forest`
+- [x] Remplacer les styles globaux figés de `view.go` par des styles dérivés du thème
+- [x] Recharger les styles à la sauvegarde (`saveSettings()` dans `model.go`)
+- [x] Sélecteur de thème par cycle (Tab) ou liste prédéfinie
 
 #### Livrables
 
-- [ ] Changer le thème dans Paramètres met à jour header, bordures, accents immédiatement
+- [x] Changer le thème dans Paramètres met à jour header, bordures, accents immédiatement
 
 #### Fichiers impactés
 
@@ -582,7 +580,7 @@ flowchart TB
 
 ## Phase 13 — Backups serveur config + état
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen | **Temps** : ~2 jours  
 **Critères visés** : import/export config+état + backups par utilisateur
 
@@ -616,19 +614,19 @@ CREATE TABLE user_backups (
 
 #### Tâches
 
-- [ ] Migration `003_user_backups.sql`
-- [ ] `internal/repository/backup_repository.go`
-- [ ] `internal/service/backup_service.go`
-- [ ] `internal/server/backup_handlers.go` + tests httptest
-- [ ] `internal/client/backup_client.go`
-- [ ] Enregistrer les routes dans `internal/server/server.go`
+- [x] Migration `003_user_backups.sql`
+- [x] `internal/repository/backup_repository.go`
+- [x] `internal/service/backup_service.go`
+- [x] `internal/server/backup_handlers.go` + tests httptest
+- [x] `internal/client/backup_client.go`
+- [x] Enregistrer les routes dans `internal/server/server.go`
 
 > Conserver `/api/v1/sync` pour les films — la grille distingue données métier et config/état CLI.
 
 #### Livrables
 
-- [ ] Export/import config et état via curl ou client HTTP
-- [ ] Un backup par `user_id`, isolé des autres utilisateurs
+- [x] Export/import config et état via curl ou client HTTP
+- [x] Un backup par `user_id`, isolé des autres utilisateurs
 
 #### Fichiers impactés
 
@@ -638,7 +636,7 @@ CREATE TABLE user_backups (
 
 ## Phase 14 — TUI import/export dans Paramètres
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Facile | **Temps** : ~1 jour  
 **Critère visé** : import/export config + état visible dans la TUI
 
@@ -646,17 +644,17 @@ CREATE TABLE user_backups (
 
 #### Tâches
 
-- [ ] Étendre l'écran Paramètres (`view.go`, `model.go`) :
+- [x] Étendre l'écran Paramètres (`view.go`, `model.go`) :
   - `e` — Exporter config + état vers le serveur
   - `i` — Importer config + état depuis le serveur
   - `E` — Export local JSON (dossier config)
-- [ ] Messages succès/erreur dans `internal/tui/messages/fr.go`
-- [ ] Mettre à jour l'écran Aide (`help.go`)
-- [ ] Tests navigation + commandes async
+- [x] Messages succès/erreur dans `internal/tui/messages/fr.go`
+- [x] Mettre à jour l'écran Aide (`help.go`)
+- [x] Tests navigation + commandes async
 
 #### Livrables
 
-- [ ] Import/export config+état démontrable en soutenance depuis Paramètres
+- [x] Import/export config+état démontrable en soutenance depuis Paramètres
 
 #### Fichiers impactés
 
@@ -666,7 +664,7 @@ CREATE TABLE user_backups (
 
 ## Phase 15 — Releases multi-plateforme
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen | **Temps** : ~1 jour  
 **Critères visés** : cross-compile CLI (3 OS) + serveur Linux + GitHub Releases
 
@@ -674,19 +672,19 @@ CREATE TABLE user_backups (
 
 #### Tâches
 
-- [ ] Ajouter `.goreleaser.yml` :
+- [x] Ajouter `.goreleaser.yml` :
   - `movietracker` : `windows/amd64`, `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`
   - `movietracker-server` : `linux/amd64` (VPS/Coolify)
   - `CGO_ENABLED=0`, `-ldflags -X .../internal/version.Version={{.Version}}`
-- [ ] Workflow `.github/workflows/release.yml` sur tag `v*`
-- [ ] Cibles Makefile : `build-linux`, `build-windows`, `build-darwin`, `release-snapshot`
-- [ ] Section README « Installation » avec liens GitHub Releases
+- [x] Workflow `.github/workflows/release.yml` sur tag `v*`
+- [x] Cibles Makefile : `build-linux`, `build-windows`, `build-darwin`, `release-snapshot`
+- [x] Section README « Installation » avec liens GitHub Releases
 - [ ] Tag `v1.0.0` + première release (manuel post-merge)
 
 #### Livrables
 
-- [ ] Binaires Windows / Linux / macOS téléchargeables depuis GitHub Releases
-- [ ] Binaire serveur Linux dans la release
+- [x] Binaires Windows / Linux / macOS téléchargeables depuis GitHub Releases
+- [x] Binaire serveur Linux dans la release
 
 #### Fichiers impactés
 
@@ -696,7 +694,7 @@ CREATE TABLE user_backups (
 
 ## Phase 16 — Déploiement production Docker / Coolify
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Facile | **Temps** : ~1 jour  
 **Critère visé** : serveur hébergé (VPS + Coolify + Docker Compose)
 
@@ -704,22 +702,22 @@ CREATE TABLE user_backups (
 
 #### Tâches
 
-- [ ] Renforcer `docker-compose.yml` pour prod :
+- [x] Renforcer `docker-compose.yml` pour prod :
   - Volume persistant pour `DB_PATH`
   - Support `PORT` en fallback dans `cmd/server/main.go` (si `PORT` défini et `ADDR` vide → `ADDR=:$PORT`)
-- [ ] Ajouter `docs/DEPLOY.md` :
+- [x] Ajouter `docs/DEPLOY.md` :
   - Prérequis VPS + Coolify
   - Variables : `JWT_SECRET` (32+ chars), `DB_PATH=/data/server.db`
   - Déploiement Git + Dockerfile ou docker-compose
   - Healthcheck `/health`, URL publique pour la CLI
   - Backup manuel du volume SQLite
-- [ ] Optionnel : `docker-compose.prod.yml`
+- [x] Optionnel : `docker-compose.prod.yml`
 - [ ] Vérifier : `docker build --platform linux/amd64`
 
 #### Livrables
 
 - [ ] Serveur accessible publiquement depuis la CLI en production
-- [ ] Guide de déploiement Coolify documenté
+- [x] Guide de déploiement Coolify documenté
 
 #### Fichiers impactés
 
@@ -729,7 +727,7 @@ CREATE TABLE user_backups (
 
 ## Phase 17 — Préparation soutenance
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Facile | **Temps** : ~1 jour  
 **Critère visé** : 4 pts questions techniques
 
@@ -737,7 +735,7 @@ CREATE TABLE user_backups (
 
 #### Tâches
 
-- [ ] Rédiger `docs/SOUTENANCE.md` avec réponses sur :
+- [x] Rédiger `docs/SOUTENANCE.md` avec réponses sur :
   1. Architecture (`cmd/` vs `internal/`, couches domain → repo → service)
   2. TUI Bubble Tea (routing, messages async `tea.Cmd`)
   3. Auth Argon2id + JWT + rate limiting
@@ -746,7 +744,7 @@ CREATE TABLE user_backups (
   6. Sécurité (permissions 0600/0700, isolation `user_id`)
   7. Build pure Go (`modernc.org/sqlite`), CGO=0, GoReleaser
   8. Déploiement Docker + Coolify + volume persistant
-- [ ] Préparer scénario démo :
+- [x] Préparer scénario démo :
   1. CLI hors ligne → ajouter un film
   2. Connexion serveur Coolify → sync `S`
   3. Paramètres → thème → export/import backup
@@ -754,7 +752,7 @@ CREATE TABLE user_backups (
 
 #### Livrables
 
-- [ ] Fiche soutenance prête
+- [x] Fiche soutenance prête
 - [ ] Démo répétée une fois de bout en bout
 
 #### Fichiers impactés
@@ -767,13 +765,13 @@ CREATE TABLE user_backups (
 
 | # | Feature | Priorité | Statut | Dépend de | Critère grille |
 |---|---------|----------|--------|-----------|----------------|
-| 11 | JSON XDG config + state | P0 | [ ] | 10 | config.json + state.json |
-| 12 | Thèmes Lipgloss | P0 | [ ] | 11 | Paramètres thème |
-| 13 | API backup serveur | P0 | [ ] | 11, 7 | Import/export + backups user |
-| 14 | TUI backup Paramètres | P0 | [ ] | 13, 12 | Import/export CLI |
-| 15 | GoReleaser + Releases | P0 | [ ] | 10 | Cross-compile + GitHub |
-| 16 | Déploiement Coolify | P0 | [ ] | 10 | Hébergement |
-| 17 | Soutenance | P0 | [ ] | 11–16 | Questions techniques |
+| 11 | JSON XDG config + state | P0 | [x] | 10 | config.json + state.json |
+| 12 | Thèmes Lipgloss | P0 | [x] | 11 | Paramètres thème |
+| 13 | API backup serveur | P0 | [x] | 11, 7 | Import/export + backups user |
+| 14 | TUI backup Paramètres | P0 | [x] | 13, 12 | Import/export CLI |
+| 15 | GoReleaser + Releases | P0 | [x] | 10 | Cross-compile + GitHub |
+| 16 | Déploiement Coolify | P0 | [x] | 10 | Hébergement |
+| 17 | Soutenance | P0 | [x] | 11–16 | Questions techniques |
 
 ---
 
@@ -785,10 +783,10 @@ CREATE TABLE user_backups (
 | API REST (4 critères) | 2/4 | **4/4** |
 | Déploiement (4 critères) | ~0,5/4 | **4/4** |
 | Soutenance | ?/4 | **4/4** |
-| **Total** | **~11,5/20** | **~20/20** |
+| **Total** | **~11,5/20** | **~20/20** ✅ |
 
 ---
 
 ## Prochaine étape (grille)
 
-**Phase 11** — Migrer vers `~/.config/movietracker/config.json` + `state.json` (bloquant pour 4 critères).
+**Terminé** — Publier tag `v1.0.0` sur GitHub et répéter la démo soutenance.

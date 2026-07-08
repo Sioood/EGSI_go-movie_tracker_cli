@@ -39,11 +39,13 @@ func newFullRouter(t *testing.T) http.Handler {
 	movieRepo := repository.NewMovieRepository(db)
 	watchRepo := repository.NewWatchEntryRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
+	backupRepo := repository.NewBackupRepository(db)
 
 	return server.NewRouter(server.Services{
-		Auth:   service.NewAuthService(userRepo, testSecret),
-		Movies: service.NewMovieService(movieRepo, watchRepo),
-		Stats:  service.NewStatsService(statsRepo),
+		Auth:    service.NewAuthService(userRepo, testSecret),
+		Movies:  service.NewMovieService(movieRepo, watchRepo),
+		Stats:   service.NewStatsService(statsRepo),
+		Backups: service.NewBackupService(backupRepo),
 	}, testSecret)
 }
 

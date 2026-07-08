@@ -110,6 +110,7 @@ func (m Model) handleSyncResult(msg syncResultMsg) (tea.Model, tea.Cmd) {
 		m.syncStatus = SyncStatusSynced
 	}
 	m.refreshMovies()
+	m.persistState()
 	return m, m.scheduleSyncTick()
 }
 

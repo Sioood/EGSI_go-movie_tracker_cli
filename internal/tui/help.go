@@ -65,6 +65,15 @@ var helpSections = []HelpSection{
 		},
 	},
 	{
+		Title: "Paramètres et backup",
+		Shortcuts: []Shortcut{
+			{Keys: "←/→", Action: "changer le thème", Screens: []Route{RouteSettings}},
+			{Keys: "e", Action: "exporter config + état vers le serveur", Screens: []Route{RouteSettings}},
+			{Keys: "i", Action: "importer config + état depuis le serveur", Screens: []Route{RouteSettings}},
+			{Keys: "E", Action: "exporter config + état en local (JSON)", Screens: []Route{RouteSettings}},
+		},
+	},
+	{
 		Title: "Synchronisation",
 		Shortcuts: []Shortcut{
 			{Keys: "S", Action: "lancer une synchronisation manuelle"},
@@ -82,16 +91,17 @@ func AllShortcuts() []Shortcut {
 }
 
 func (m Model) helpView() string {
+	s := m.styles
 	var lines []string
-	lines = append(lines, activeStyle.Render(messages.UI.HelpTitle), "")
+	lines = append(lines, s.Active.Render(messages.UI.HelpTitle), "")
 
 	for _, section := range helpSections {
-		lines = append(lines, labelStyle.Render(section.Title))
+		lines = append(lines, s.Label.Render(section.Title))
 		for _, sc := range section.Shortcuts {
 			lines = append(lines, fmt.Sprintf("  %-12s %s", sc.Keys, sc.Action))
 		}
 		lines = append(lines, "")
 	}
 
-	return panelStyle.Render(strings.Join(lines, "\n"))
+	return s.Panel.Render(strings.Join(lines, "\n"))
 }

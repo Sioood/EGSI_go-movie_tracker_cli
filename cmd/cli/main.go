@@ -5,10 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 
 	"github.com/movietracker/movie-tracker/internal/client"
 	"github.com/movietracker/movie-tracker/internal/config"
 	"github.com/movietracker/movie-tracker/internal/database"
+	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/logging"
 	"github.com/movietracker/movie-tracker/internal/repository"
 	"github.com/movietracker/movie-tracker/internal/service"
@@ -29,6 +31,26 @@ func (a *authAdapter) Me(ctx context.Context, accessToken string) (tui.UserInfo,
 		return tui.UserInfo{}, err
 	}
 	return tui.UserInfo{ID: info.ID, Email: info.Email}, nil
+}
+
+type backupAdapter struct {
+	*client.BackupClient
+}
+
+func (b *backupAdapter) ExportSnapshot(ctx context.Context, accessToken string) (tui.BackupSnapshot, error) {
+	snapshot, err := b.BackupClient.ExportSnapshot(ctx, accessToken)
+	if err != nil {
+		return tui.BackupSnapshot{}, err
+	}
+	return tui.BackupSnapshot{Config: snapshot.Config, State: snapshot.State}, nil
+}
+
+func (b *backupAdapter) ImportSnapshot(ctx context.Context, accessToken string, snapshot tui.BackupSnapshot) error {
+	return b.BackupClient.ImportSnapshot(ctx, accessToken, service.BackupSnapshot{
+		Config: snapshot.Config,
+		State:  snapshot.State,
+		SyncedAt: time.Now().UTC(),
+	})
 }
 
 type tokenRefresher struct {
@@ -82,6 +104,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	appState, err := config.LoadState()
+	if err != nil {
+		logger.Error("load state", "err", err)
+		os.Exit(1)
+	}
+
 	sess, err := config.LoadSession()
 	if err != nil {
 		logger.Error("load session", "err", err)
@@ -89,6 +117,7 @@ func main() {
 	}
 
 	authClient := client.NewAuthClient(appCfg.ServerURL)
+	backupClient := client.NewBackupClient(appCfg.ServerURL)
 	sessionState := tuiSessionFromConfig(sess)
 
 	if !appCfg.OfflineMode && sess.RefreshToken != "" {
@@ -192,12 +221,16 @@ func main() {
 		Session: sessionState,
 	}
 
-	logger.Info("MovieTracker CLI ready", "phase", 9, "database", dbPath)
+	logger.Info("MovieTracker CLI ready", "database", dbPath)
 
 	model := tui.New(tui.Options{
-		MovieService: hybridClient,
-		Auth:         &authAdapter{authClient},
-		SyncRunner:   &syncRunnerAdapter{syncService},
+		MovieService:  hybridClient,
+		Auth:          &authAdapter{authClient},
+		Backup:        &backupAdapter{backupClient},
+		SyncRunner:    &syncRunnerAdapter{syncService},
+		InitialRoute:  tui.ParseRoute(appState.LastRoute),
+		InitialFilter: domainMovieFilter(appState.Filter),
+		InitialSort:   domainMovieSort(appState.Sort),
 		ResolveUserID: func() string {
 			userID, err := syncService.UserID(context.Background())
 			if err != nil {
@@ -210,11 +243,18 @@ func main() {
 			runtime.offline.Store(cfg.OfflineMode)
 			authClient.SetBaseURL(cfg.ServerURL)
 			syncClient.SetBaseURL(cfg.ServerURL)
+			backupClient.SetBaseURL(cfg.ServerURL)
 			return config.SaveConfig(config.Config{
 				Theme:       cfg.Theme,
 				ServerURL:   cfg.ServerURL,
 				OfflineMode: cfg.OfflineMode,
 			})
+		},
+		SaveState: func(state config.State) error {
+			return config.SaveState(state)
+		},
+		ExportLocal: func(snapshot tui.BackupSnapshot) (string, error) {
+			return config.ExportLocal(snapshot.Config, snapshot.State)
 		},
 		SaveSession: func(state tui.SessionState) error {
 			runtime.session.Store(state)
@@ -246,5 +286,23 @@ func tuiSessionFromConfig(sess config.Session) tui.SessionState {
 		ServerUserID:  sess.ServerUserID,
 		Email:         sess.Email,
 		Authenticated: sess.RefreshToken != "" && sess.Email != "",
+	}
+}
+
+func domainMovieFilter(value string) domain.MovieFilter {
+	switch domain.MovieFilter(value) {
+	case domain.MovieFilterWatched, domain.MovieFilterUnwatched, domain.MovieFilterRated, domain.MovieFilterUnrated:
+		return domain.MovieFilter(value)
+	default:
+		return domain.MovieFilterAll
+	}
+}
+
+func domainMovieSort(value string) domain.MovieSort {
+	switch domain.MovieSort(value) {
+	case domain.MovieSortDate, domain.MovieSortRating:
+		return domain.MovieSort(value)
+	default:
+		return domain.MovieSortTitle
 	}
 }

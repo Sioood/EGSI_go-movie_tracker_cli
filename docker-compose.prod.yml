@@ -1,0 +1,21 @@
+services:
+  server:
+    build: .
+    env_file:
+      - .env
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ADDR: ${ADDR:-:8080}
+      DB_PATH: ${DB_PATH:-/data/server.db}
+    volumes:
+      - server-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  server-data:

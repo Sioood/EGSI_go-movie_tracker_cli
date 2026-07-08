@@ -10,7 +10,7 @@ import (
 
 func TestDefaultConfigWhenMissing(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
+	path := filepath.Join(dir, "config.json")
 
 	cfg, err := config.LoadConfigFromDir(dir)
 	if err != nil {
@@ -45,12 +45,34 @@ func TestConfigRoundTrip(t *testing.T) {
 		t.Fatalf("round-trip mismatch: got %+v want %+v", loaded, cfg)
 	}
 
-	info, err := os.Stat(filepath.Join(dir, "config.yaml"))
+	info, err := os.Stat(filepath.Join(dir, "config.json"))
 	if err != nil {
 		t.Fatalf("stat config: %v", err)
 	}
 	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("want 0600, got %o", info.Mode().Perm())
+	}
+}
+
+func TestStateRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+
+	state := config.State{
+		LastRoute:  "movie_list",
+		Filter:     "watched",
+		Sort:       "rating",
+		LastSyncAt: "2026-07-08T12:00:00Z",
+	}
+	if err := config.SaveStateToDir(dir, state); err != nil {
+		t.Fatalf("save state: %v", err)
+	}
+
+	loaded, err := config.LoadStateFromDir(dir)
+	if err != nil {
+		t.Fatalf("load state: %v", err)
+	}
+	if loaded != state {
+		t.Fatalf("round-trip mismatch: got %+v want %+v", loaded, state)
 	}
 }
 
@@ -78,7 +100,7 @@ func TestSessionRoundTripAndClear(t *testing.T) {
 	if err := config.ClearSessionInDir(dir); err != nil {
 		t.Fatalf("clear session: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "session.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(dir, "session.json")); !os.IsNotExist(err) {
 		t.Fatal("expected session file removed")
 	}
 }
@@ -95,7 +117,38 @@ func TestSaveEmptySessionRemovesFile(t *testing.T) {
 	if err := config.SaveSessionToDir(dir, config.Session{}); err != nil {
 		t.Fatalf("clear via empty save: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "session.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(dir, "session.json")); !os.IsNotExist(err) {
 		t.Fatal("expected session file removed on empty save")
+	}
+}
+
+func TestLegacyYAMLMigration(t *testing.T) {
+	home := t.TempDir()
+	legacyDir := filepath.Join(home, ".movietracker")
+	if err := os.MkdirAll(legacyDir, 0o700); err != nil {
+		t.Fatalf("mkdir legacy: %v", err)
+	}
+	legacyConfig := "theme: forest\nserver_url: http://legacy:9000\noffline_mode: false\n"
+	if err := os.WriteFile(filepath.Join(legacyDir, "config.yaml"), []byte(legacyConfig), 0o600); err != nil {
+		t.Fatalf("write legacy config: %v", err)
+	}
+
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	dir, err := config.Dir()
+	if err != nil {
+		t.Fatalf("dir: %v", err)
+	}
+
+	cfg, err := config.LoadConfigFromDir(dir)
+	if err != nil {
+		t.Fatalf("load migrated config: %v", err)
+	}
+	if cfg.Theme != "forest" || cfg.ServerURL != "http://legacy:9000" || cfg.OfflineMode {
+		t.Fatalf("unexpected migrated config: %+v", cfg)
+	}
+	if _, err := os.Stat(legacyDir + ".migrated"); err != nil {
+		t.Fatalf("expected archived legacy dir: %v", err)
 	}
 }

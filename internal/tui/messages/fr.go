@@ -74,6 +74,15 @@ var UI = struct {
 	OfflineEnabled      string
 	OfflineToggleHint   string
 	ConnectedHintFmt    string
+	BackupHint          string
+	BackupExportOK      string
+	BackupImportOK      string
+	BackupNeedAuth      string
+	BackupUnavailable   string
+	BackupExporting     string
+	BackupImporting     string
+	BackupLocalExportFmt string
+	ThemeChangedFmt     string
 
 	// Stats
 	StatsTitle          string
@@ -161,7 +170,7 @@ var UI = struct {
 	FooterMovieForm:   "tab changer de champ • entrée ajouter • esc liste • q quitter",
 	FooterMovieDetail: "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste",
 	FooterStats:       "m menu • s paramètres • l connexion • S sync • ? aide • q quitter",
-	FooterSettings:    "tab champ suivant • o hors ligne • d déconnexion • entrée enregistrer • esc menu • q quitter",
+	FooterSettings:    "←/→ thème • tab champ • o hors ligne • e export serveur • i import serveur • E export local • entrée enregistrer • esc menu • q quitter",
 	FooterLogin:       "tab champ suivant • entrée connexion • r inscription • esc menu • q quitter",
 	FooterRegister:    "tab champ suivant • entrée inscription • esc connexion • q quitter",
 
@@ -177,7 +186,7 @@ var UI = struct {
 	AddMovieHint:    "Appuie sur a pour ajouter un film.",
 	MovieFormHint:   "Titre obligatoire, année optionnelle.",
 	MovieDetailHint: "Modifie les champs puis valide avec Entrée.",
-	SettingsHint:    "Modifie les champs puis valide avec Entrée.",
+	SettingsHint:    "←/→ change le thème, e/i/E pour backup, Entrée pour enregistrer.",
 	LoginHint:       "Connecte-toi au serveur MovieTracker.",
 	RegisterHint:    "Crée un compte sur le serveur MovieTracker.",
 	LoginLoading:    "Connexion en cours...",
@@ -200,7 +209,16 @@ var UI = struct {
 	OfflineDisabled:   "désactivé",
 	OfflineEnabled:    "activé",
 	OfflineToggleHint: "Mode hors ligne : %s (o pour basculer)",
-	ConnectedHintFmt:  "Connecté : %s (d pour déconnecter)",
+	ConnectedHintFmt:     "Connecté : %s (d pour déconnecter)",
+	BackupHint:           "Backup : e → serveur | i ← serveur | E → fichiers locaux",
+	BackupExportOK:       "Configuration et état exportés vers le serveur.",
+	BackupImportOK:       "Configuration et état importés depuis le serveur.",
+	BackupNeedAuth:       "Connecte-toi au serveur pour utiliser le backup distant.",
+	BackupUnavailable:    "Service de backup indisponible.",
+	BackupExporting:      "Export vers le serveur...",
+	BackupImporting:      "Import depuis le serveur...",
+	BackupLocalExportFmt: "Fichiers JSON exportés dans %s",
+	ThemeChangedFmt:      "Thème : %s",
 
 	StatsTitle:         "Statistiques",
 	StatsTotalMovies:   "Films suivis",

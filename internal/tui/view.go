@@ -11,33 +11,6 @@ import (
 	"github.com/movietracker/movie-tracker/internal/version"
 )
 
-var (
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("230")).
-			Background(lipgloss.Color("62")).
-			Padding(0, 1)
-
-	subtleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("244"))
-
-	panelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			Padding(1, 2)
-
-	activeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("86")).
-			Bold(true)
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("203"))
-
-	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("229")).
-			Bold(true)
-)
-
 func (m Model) View() string {
 	body := m.bodyView()
 	content := lipgloss.JoinVertical(
@@ -57,9 +30,10 @@ func (m Model) View() string {
 }
 
 func (m Model) headerView() string {
+	s := m.styles
 	user := connectionStatus(m.state)
-	right := subtleStyle.Render(messages.ThemeHeader(m.state.Config.Theme, user))
-	line := lipgloss.JoinHorizontal(lipgloss.Top, titleStyle.Render(messages.UI.AppName+" v"+version.Version), "  ", right)
+	right := s.Subtle.Render(messages.ThemeHeader(m.state.Config.Theme, user))
+	line := lipgloss.JoinHorizontal(lipgloss.Top, s.Title.Render(messages.UI.AppName+" v"+version.Version), "  ", right)
 	return line
 }
 
@@ -74,6 +48,7 @@ func connectionStatus(state AppState) string {
 }
 
 func (m Model) footerView() string {
+	s := m.styles
 	syncLine := m.syncFooterLine()
 	help := messages.UI.FooterDefault
 	switch m.route {
@@ -93,9 +68,9 @@ func (m Model) footerView() string {
 		help = messages.UI.FooterRegister
 	}
 	if syncLine != "" {
-		return subtleStyle.Render(syncLine + "  |  " + help)
+		return s.Subtle.Render(syncLine + "  |  " + help)
 	}
-	return subtleStyle.Render(help)
+	return s.Subtle.Render(help)
 }
 
 func (m Model) syncFooterLine() string {
@@ -161,8 +136,9 @@ func (m Model) bodyView() string {
 }
 
 func (m Model) splashView() string {
-	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render(messages.UI.SplashWelcome),
+	s := m.styles
+	return s.Panel.Render(strings.Join([]string{
+		s.Active.Render(messages.UI.SplashWelcome),
 		"",
 		messages.UI.SplashTagline,
 		"",
@@ -171,10 +147,11 @@ func (m Model) splashView() string {
 }
 
 func (m Model) movieListView() string {
+	s := m.styles
 	searchBlock := strings.Join([]string{
-		label(messages.UI.SearchLabel, m.searchInput.Focused()),
+		m.label(messages.UI.SearchLabel, m.searchInput.Focused()),
 		m.searchInput.View(),
-		subtleStyle.Render(fmt.Sprintf(messages.UI.FilterSortHint, messages.FilterLabel(m.filter), messages.SortLabel(m.sort))),
+		s.Subtle.Render(fmt.Sprintf(messages.UI.FilterSortHint, messages.FilterLabel(m.filter), messages.SortLabel(m.sort))),
 	}, "\n")
 
 	if len(m.movieRecords) == 0 {
@@ -182,26 +159,27 @@ func (m Model) movieListView() string {
 		if strings.TrimSpace(m.searchInput.Value()) != "" || m.filter != domain.MovieFilterAll {
 			emptyMessage = messages.UI.EmptySearch
 		}
-		return panelStyle.Render(strings.Join([]string{
-			activeStyle.Render(messages.UI.MoviesTitle),
+		return s.Panel.Render(strings.Join([]string{
+			s.Active.Render(messages.UI.MoviesTitle),
 			"",
 			searchBlock,
 			"",
 			emptyMessage,
 			messages.UI.AddMovieHint,
 			"",
-			statusLine(m.messageKind, m.message),
+			m.statusLine(m.messageKind, m.message),
 		}, "\n"))
 	}
 
-	lines := []string{panelStyle.Render(searchBlock), m.movies.View()}
+	lines := []string{s.Panel.Render(searchBlock), m.movies.View()}
 	if m.message != "" {
-		lines = append(lines, "", statusLine(m.messageKind, m.message))
+		lines = append(lines, "", m.statusLine(m.messageKind, m.message))
 	}
 	return strings.Join(lines, "\n")
 }
 
 func (m Model) movieFormView() string {
+	s := m.styles
 	message := m.message
 	kind := m.messageKind
 	if message == "" {
@@ -209,20 +187,21 @@ func (m Model) movieFormView() string {
 		kind = messages.KindInfo
 	}
 
-	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render(messages.UI.AddMovieTitle),
+	return s.Panel.Render(strings.Join([]string{
+		s.Active.Render(messages.UI.AddMovieTitle),
 		"",
-		label(messages.UI.TitleLabel, m.formFocus == 0),
+		m.label(messages.UI.TitleLabel, m.formFocus == 0),
 		m.titleInput.View(),
 		"",
-		label(messages.UI.YearLabel, m.formFocus == 1),
+		m.label(messages.UI.YearLabel, m.formFocus == 1),
 		m.yearInput.View(),
 		"",
-		statusLine(kind, message),
+		m.statusLine(kind, message),
 	}, "\n"))
 }
 
 func (m Model) movieDetailView() string {
+	s := m.styles
 	title := messages.UI.MovieDetailTitle
 	if m.selectedMovie.Title != "" {
 		title = m.selectedMovie.Title
@@ -243,42 +222,43 @@ func (m Model) movieDetailView() string {
 		kind = messages.KindInfo
 	}
 
-	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render(title),
-		subtleStyle.Render("Vu : " + watched),
+	return s.Panel.Render(strings.Join([]string{
+		s.Active.Render(title),
+		s.Subtle.Render("Vu : " + watched),
 		"",
-		label(messages.UI.RatingLabel, m.detailFocus == 0),
+		m.label(messages.UI.RatingLabel, m.detailFocus == 0),
 		m.ratingInput.View(),
 		"",
-		label(messages.UI.WatchedAtLabel, m.detailFocus == 1),
+		m.label(messages.UI.WatchedAtLabel, m.detailFocus == 1),
 		m.watchedAtInput.View(),
 		"",
-		label(messages.UI.ReviewLabel, m.detailFocus == 2),
+		m.label(messages.UI.ReviewLabel, m.detailFocus == 2),
 		m.reviewInput.View(),
 		"",
-		statusLine(kind, message),
+		m.statusLine(kind, message),
 	}, "\n"))
 }
 
 func (m Model) statsView() string {
-	s := m.stats
+	s := m.styles
+	stats := m.stats
 	lines := []string{
-		activeStyle.Render(messages.UI.StatsTitle),
+		s.Active.Render(messages.UI.StatsTitle),
 		"",
-		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalMovies, s.TotalMovies),
-		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalWatched, s.TotalWatched),
-		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalRated, s.TotalRated),
+		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalMovies, stats.TotalMovies),
+		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalWatched, stats.TotalWatched),
+		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalRated, stats.TotalRated),
 	}
 
-	if s.TotalRated > 0 {
-		lines = append(lines, fmt.Sprintf("%-22s "+messages.UI.StatsRatingFmt, messages.UI.StatsAverageRating, s.AverageRating))
+	if stats.TotalRated > 0 {
+		lines = append(lines, fmt.Sprintf("%-22s "+messages.UI.StatsRatingFmt, messages.UI.StatsAverageRating, stats.AverageRating))
 	} else {
-		lines = append(lines, fmt.Sprintf("%-22s %s", messages.UI.StatsAverageRating, subtleStyle.Render("—")))
+		lines = append(lines, fmt.Sprintf("%-22s %s", messages.UI.StatsAverageRating, s.Subtle.Render("—")))
 	}
 
-	if len(s.BestMovies) > 0 {
-		lines = append(lines, "", labelStyle.Render(messages.UI.StatsBestMovies))
-		for _, mr := range s.BestMovies {
+	if len(stats.BestMovies) > 0 {
+		lines = append(lines, "", s.Label.Render(messages.UI.StatsBestMovies))
+		for _, mr := range stats.BestMovies {
 			title := mr.Movie.Title
 			if mr.Movie.Year > 0 {
 				title = fmt.Sprintf("%s (%d)", title, mr.Movie.Year)
@@ -287,9 +267,9 @@ func (m Model) statsView() string {
 		}
 	}
 
-	if len(s.WorstMovies) > 0 {
-		lines = append(lines, "", labelStyle.Render(messages.UI.StatsWorstMovies))
-		for _, mr := range s.WorstMovies {
+	if len(stats.WorstMovies) > 0 {
+		lines = append(lines, "", s.Label.Render(messages.UI.StatsWorstMovies))
+		for _, mr := range stats.WorstMovies {
 			title := mr.Movie.Title
 			if mr.Movie.Year > 0 {
 				title = fmt.Sprintf("%s (%d)", title, mr.Movie.Year)
@@ -298,19 +278,20 @@ func (m Model) statsView() string {
 		}
 	}
 
-	if len(s.ByMonth) > 0 {
-		lines = append(lines, "", labelStyle.Render(messages.UI.StatsByMonth))
-		lines = append(lines, asciiHistogram(s.ByMonth))
+	if len(stats.ByMonth) > 0 {
+		lines = append(lines, "", s.Label.Render(messages.UI.StatsByMonth))
+		lines = append(lines, m.asciiHistogram(stats.ByMonth))
 	}
 
-	if s.TotalMovies == 0 {
-		lines = append(lines, "", subtleStyle.Render(messages.UI.StatsEmptyHint))
+	if stats.TotalMovies == 0 {
+		lines = append(lines, "", s.Subtle.Render(messages.UI.StatsEmptyHint))
 	}
 
-	return panelStyle.Render(strings.Join(lines, "\n"))
+	return s.Panel.Render(strings.Join(lines, "\n"))
 }
 
 func (m Model) settingsView() string {
+	s := m.styles
 	message := m.message
 	kind := m.messageKind
 	if message == "" {
@@ -318,25 +299,28 @@ func (m Model) settingsView() string {
 		kind = messages.KindInfo
 	}
 
+	themeValue := fmt.Sprintf("%s  (←/→)", NormalizeTheme(m.state.Config.Theme))
 	lines := []string{
-		activeStyle.Render(messages.UI.SettingsTitle),
+		s.Active.Render(messages.UI.SettingsTitle),
 		"",
-		label(messages.UI.ThemeLabel, m.settingsFocus == 0),
-		m.themeInput.View(),
+		m.label(messages.UI.ThemeLabel, m.settingsFocus == 0),
+		themeValue,
 		"",
-		label(messages.UI.ServerURLLabel, m.settingsFocus == 1),
+		m.label(messages.UI.ServerURLLabel, m.settingsFocus == 1),
 		m.serverURLInput.View(),
 		"",
-		subtleStyle.Render(fmt.Sprintf(messages.UI.OfflineToggleHint, messages.OfflineModeLabel(m.state.Config.OfflineMode))),
+		s.Subtle.Render(fmt.Sprintf(messages.UI.OfflineToggleHint, messages.OfflineModeLabel(m.state.Config.OfflineMode))),
+		s.Subtle.Render(messages.UI.BackupHint),
 	}
 	if m.state.Session.Authenticated {
-		lines = append(lines, subtleStyle.Render(fmt.Sprintf(messages.UI.ConnectedHintFmt, m.state.Session.Email)))
+		lines = append(lines, s.Subtle.Render(fmt.Sprintf(messages.UI.ConnectedHintFmt, m.state.Session.Email)))
 	}
-	lines = append(lines, "", statusLine(kind, message))
-	return panelStyle.Render(strings.Join(lines, "\n"))
+	lines = append(lines, "", m.statusLine(kind, message))
+	return s.Panel.Render(strings.Join(lines, "\n"))
 }
 
 func (m Model) loginView() string {
+	s := m.styles
 	message := m.message
 	kind := m.messageKind
 	if message == "" {
@@ -348,22 +332,23 @@ func (m Model) loginView() string {
 		kind = messages.KindInfo
 	}
 
-	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render(messages.UI.LoginTitle),
+	return s.Panel.Render(strings.Join([]string{
+		s.Active.Render(messages.UI.LoginTitle),
 		"",
-		label(messages.UI.EmailLabel, m.loginFocus == 0),
+		m.label(messages.UI.EmailLabel, m.loginFocus == 0),
 		m.emailInput.View(),
 		"",
-		label(messages.UI.PasswordLabel, m.loginFocus == 1),
+		m.label(messages.UI.PasswordLabel, m.loginFocus == 1),
 		m.passwordInput.View(),
 		"",
-		subtleStyle.Render(messages.UI.LoginNoAccount),
+		s.Subtle.Render(messages.UI.LoginNoAccount),
 		"",
-		statusLine(kind, message),
+		m.statusLine(kind, message),
 	}, "\n"))
 }
 
 func (m Model) registerView() string {
+	s := m.styles
 	message := m.message
 	kind := m.messageKind
 	if message == "" {
@@ -375,23 +360,23 @@ func (m Model) registerView() string {
 		kind = messages.KindInfo
 	}
 
-	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render(messages.UI.RegisterTitle),
+	return s.Panel.Render(strings.Join([]string{
+		s.Active.Render(messages.UI.RegisterTitle),
 		"",
-		label(messages.UI.EmailLabel, m.registerFocus == 0),
+		m.label(messages.UI.EmailLabel, m.registerFocus == 0),
 		m.emailInput.View(),
 		"",
-		label(messages.UI.PasswordLabel, m.registerFocus == 1),
+		m.label(messages.UI.PasswordLabel, m.registerFocus == 1),
 		m.passwordInput.View(),
 		"",
-		label(messages.UI.ConfirmLabel, m.registerFocus == 2),
+		m.label(messages.UI.ConfirmLabel, m.registerFocus == 2),
 		m.confirmPasswordInput.View(),
 		"",
-		statusLine(kind, message),
+		m.statusLine(kind, message),
 	}, "\n"))
 }
 
-func asciiHistogram(buckets []domain.MonthBucket) string {
+func (m Model) asciiHistogram(buckets []domain.MonthBucket) string {
 	if len(buckets) > 12 {
 		buckets = buckets[len(buckets)-12:]
 	}
@@ -413,29 +398,30 @@ func asciiHistogram(buckets []domain.MonthBucket) string {
 		if maxCount > 0 {
 			barLen = (b.Count * barWidth) / maxCount
 		}
-		bar := activeStyle.Render(strings.Repeat("█", barLen))
+		bar := m.styles.Active.Render(strings.Repeat("█", barLen))
 		lines = append(lines, fmt.Sprintf("  %-9s %s %d", lbl, bar, b.Count))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func label(text string, active bool) string {
+func (m Model) label(text string, active bool) string {
 	if active {
-		return activeStyle.Render(text)
+		return m.styles.Active.Render(text)
 	}
-	return labelStyle.Render(text)
+	return m.styles.Label.Render(text)
 }
 
-func statusLine(kind messages.Kind, message string) string {
+func (m Model) statusLine(kind messages.Kind, message string) string {
 	if message == "" {
 		return ""
 	}
+	s := m.styles
 	switch kind {
 	case messages.KindError:
-		return errorStyle.Render(message)
+		return s.Error.Render(message)
 	case messages.KindSuccess:
-		return activeStyle.Render(message)
+		return s.Active.Render(message)
 	default:
-		return subtleStyle.Render(message)
+		return s.Subtle.Render(message)
 	}
 }

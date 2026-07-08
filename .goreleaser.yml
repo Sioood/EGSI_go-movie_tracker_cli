@@ -1,0 +1,63 @@
+version: 2
+
+project_name: movie-tracker
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: movietracker-cli
+    main: ./cmd/cli
+    binary: movietracker
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/movietracker/movie-tracker/internal/version.Version={{.Version}}
+
+  - id: movietracker-server
+    main: ./cmd/server
+    binary: movietracker-server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X github.com/movietracker/movie-tracker/internal/version.Version={{.Version}}
+
+archives:
+  - format: tar.gz
+    ids:
+      - movietracker-cli
+      - movietracker-server
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc

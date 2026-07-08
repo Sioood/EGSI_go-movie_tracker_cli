@@ -10,10 +10,24 @@ Application terminal en Go pour suivre ses films, avec synchronisation hybride l
 
 ## Installation rapide
 
+### Depuis les sources
+
 ```bash
 make build
 make test
 ```
+
+### Depuis GitHub Releases
+
+Télécharger le binaire pour votre OS depuis [GitHub Releases](https://github.com/Sioood/EGSI_go-movie_tracker_cli/releases) :
+
+| OS | Binaire |
+|----|---------|
+| Linux amd64 | `movietracker_linux_amd64.tar.gz` |
+| macOS amd64/arm64 | `movietracker_darwin_*` |
+| Windows amd64 | `movietracker_windows_amd64.zip` |
+
+Le serveur Linux est inclus : `movietracker-server` dans l'archive Linux.
 
 Binaires produits :
 
@@ -29,8 +43,11 @@ make run-cli
 Au premier lancement :
 
 - La base SQLite locale est créée dans `data/client.db` (répertoire courant)
-- La configuration utilisateur est stockée dans `~/.movietracker/config.yaml`
-- La session serveur (tokens) est dans `~/.movietracker/session.yaml`
+- La configuration utilisateur est dans `~/.config/movietracker/config.json`
+- L'état UI est dans `~/.config/movietracker/state.json`
+- La session serveur (tokens) est dans `~/.config/movietracker/session.json`
+
+> Migration automatique depuis l'ancien `~/.movietracker/*.yaml` au premier lancement.
 
 ### Modes
 
@@ -71,6 +88,7 @@ Arrêt : `make docker-down`
 |----------|--------|-------------|
 | `JWT_SECRET` | *(requis)* | Clé de signature JWT |
 | `ADDR` | `:8080` | Adresse d'écoute |
+| `PORT` | — | Utilisé si `ADDR` vide (compatibilité PaaS) |
 | `DB_PATH` | `data/server.db` | Chemin SQLite serveur |
 
 ### Endpoints principaux
@@ -82,6 +100,13 @@ Arrêt : `make docker-down`
 | `GET/POST` | `/api/v1/movies` | JWT |
 | `GET` | `/api/v1/stats` | JWT |
 | `GET/POST` | `/api/v1/sync` | JWT |
+| `GET/PUT` | `/api/v1/backup/config` | JWT |
+| `GET/PUT` | `/api/v1/backup/state` | JWT |
+| `GET/PUT` | `/api/v1/backup` | JWT |
+
+## Déploiement production
+
+Guide Coolify / VPS : [docs/DEPLOY.md](docs/DEPLOY.md)
 
 ## Commandes Makefile
 
@@ -94,19 +119,24 @@ Arrêt : `make docker-down`
 | `make run-server` | Build + lance l'API |
 | `make docker-up` | Démarre le serveur via Docker Compose |
 | `make docker-down` | Arrête les conteneurs |
+| `make build-linux` | Cross-compile Linux (CLI + serveur) |
+| `make build-windows` | Cross-compile Windows CLI |
+| `make build-darwin` | Cross-compile macOS CLI |
+| `make release-snapshot` | Build local GoReleaser (snapshot) |
 | `make tidy` | `go mod tidy` |
 
 ## Tests E2E manuels
 
-Checklist complète : [docs/E2E.md](docs/E2E.md)
+Checklist complète : [docs/E2E.md](docs/E2E.md)  
+Fiche soutenance : [docs/SOUTENANCE.md](docs/SOUTENANCE.md)
 
 ## Architecture
 
 ```
 cmd/cli/              # Binaire TUI
 cmd/server/           # Binaire API
-internal/config/      # Config YAML (~/.movietracker/)
-internal/client/      # Client HTTP auth + sync
+internal/config/      # Config JSON XDG (~/.config/movietracker/)
+internal/client/      # Client HTTP auth + sync + backup
 internal/sync/        # Service sync hybride LWW
 internal/domain/      # Entités métier
 internal/database/    # Migrations SQLite (goose)

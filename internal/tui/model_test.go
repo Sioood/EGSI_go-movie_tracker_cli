@@ -11,6 +11,7 @@ import (
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/tui/messages"
 )
 
 func TestKeyboardNavigationBetweenScreens(t *testing.T) {
@@ -183,6 +184,31 @@ func TestRegisterNavigation(t *testing.T) {
 	assertRoute(t, model, RouteRegister)
 	model = press(t, model, "esc")
 	assertRoute(t, model, RouteLogin)
+}
+
+func TestSettingsThemeCycle(t *testing.T) {
+	model := testNewModel(newFakeMovieService())
+	model.goTo(RouteSettings)
+
+	if model.state.Config.Theme != "midnight" {
+		t.Fatalf("expected default midnight theme, got %s", model.state.Config.Theme)
+	}
+
+	model = press(t, model, "right")
+	if model.state.Config.Theme != "solar" {
+		t.Fatalf("expected solar theme after right, got %s", model.state.Config.Theme)
+	}
+}
+
+func TestSettingsBackupExportRequiresAuth(t *testing.T) {
+	model := testNewModel(newFakeMovieService())
+	model.goTo(RouteSettings)
+	model.state.Config.OfflineMode = true
+
+	model = press(t, model, "e")
+	if model.messageKind != messages.KindError {
+		t.Fatalf("expected error when offline, got %s", model.message)
+	}
 }
 
 func testNewModel(store MovieClient) Model {
