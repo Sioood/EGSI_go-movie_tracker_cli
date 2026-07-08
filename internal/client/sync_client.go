@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/movietracker/movie-tracker/internal/apperrors"
@@ -38,11 +37,16 @@ type SyncClient struct {
 // NewSyncClient creates a SyncClient with a 10s timeout.
 func NewSyncClient(baseURL string) *SyncClient {
 	return &SyncClient{
-		BaseURL: strings.TrimRight(baseURL, "/"),
+		BaseURL: normalizeBaseURL(baseURL),
 		HTTPClient: &http.Client{
 			Timeout: defaultTimeout,
 		},
 	}
+}
+
+// SetBaseURL updates the API base URL (e.g. after a settings change).
+func (c *SyncClient) SetBaseURL(baseURL string) {
+	c.BaseURL = normalizeBaseURL(baseURL)
 }
 
 func (c *SyncClient) client() *http.Client {

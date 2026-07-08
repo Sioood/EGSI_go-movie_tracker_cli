@@ -116,8 +116,9 @@ internal/server/      # Handlers HTTP + middleware JWT
 internal/tui/         # Interface Bubble Tea
 internal/tui/messages/# Chaînes FR centralisées
 internal/version/     # Version applicative (1.0.0)
-migrations/           # Schémas client et serveur
 ```
+
+Migrations SQL embarquées dans `internal/database/migrations/` (goose embed).
 
 ## Licence
 

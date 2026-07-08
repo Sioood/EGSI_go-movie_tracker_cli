@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 9** — Sync hybride.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 10** — Robustesse et polish.
 
 **Dernière mise à jour** : 2026-07-08  
-**Phase en cours** : Phase 10 — Robustesse et polish
+**Phase en cours** : Bonus A — TMDB
 
-**Progression globale** : `10 / 14` phases terminées
+**Progression globale** : `11 / 14` phases terminées
 
 ---
 
@@ -21,7 +21,7 @@
 - [x] **Phase 7** — [API REST](#phase-7--api-rest-films) · P0 · Moyen · ~3j
 - [x] **Phase 8** — [Login TUI](#phase-8--connexion-tui--serveur) · P0 · Moyen · ~2j
 - [x] **Phase 9** — [Sync hybride](#phase-9--sync-hybride) · P0 · Difficile · ~5j
-- [ ] **Phase 10** — [Polish](#phase-10--robustesse-et-polish) · P1 · Moyen · ~3j
+- [x] **Phase 10** — [Polish](#phase-10--robustesse-et-polish) · P1 · Moyen · ~3j
 - [ ] **Bonus A** — [TMDB](#bonus-a--intégration-tmdb) · P2 · Moyen · ~3j
 - [ ] **Bonus B** — [Export CSV/JSON](#bonus-b--export-csv--json) · P3 · Facile · ~1j
 - [ ] **Bonus C** — [Sync avancée](#bonus-c--améliorations-sync) · P3 · Difficile · ~3j
@@ -65,7 +65,7 @@ make run-server
 #### Tâches
 
 - [x] Module Go `github.com/movietracker/movie-tracker`
-- [x] Arborescence `cmd/`, `internal/`, `migrations/`
+- [x] Arborescence `cmd/`, `internal/` (+ migrations embarquées)
 - [x] `Makefile` : build, test, run-cli, run-server
 - [x] Migrations goose client (squelette) + serveur (table `users`)
 - [x] `internal/domain` : `User`, `Movie`, `WatchEntry`
@@ -80,7 +80,9 @@ make run-server
 
 #### Fichiers livrés
 
-`go.mod`, `Makefile`, `README.md`, `.gitignore`, `cmd/`, `internal/apperrors/`, `internal/domain/`, `internal/database/`, `internal/logging/`, `migrations/`
+`go.mod`, `Makefile`, `README.md`, `.gitignore`, `cmd/`, `internal/apperrors/`, `internal/domain/`, `internal/database/`, `internal/logging/`
+
+> Les migrations SQL sont embarquées dans `internal/database/migrations/` (source unique).
 
 ---
 
@@ -105,7 +107,7 @@ make run-server
 
 #### Fichiers livrés
 
-`internal/repository/`, `internal/service/`, `migrations/client/002_movies_watch_entries.sql`, `internal/database/migrations/client/002_movies_watch_entries.sql`
+`internal/repository/`, `internal/service/`, `internal/database/migrations/client/002_movies_watch_entries.sql`
 
 ---
 
@@ -143,7 +145,7 @@ make run-server
 - [x] Liste avec statut vu/non vu
 - [x] Détail : note, critique, date
 - [x] Marquer vu + date YYYY-MM-DD
-- [x] Note échelle 5/10
+- [x] Note échelle 0–10
 - [x] Critique texte
 - [x] Messages d'erreur inline
 
@@ -359,3 +361,5 @@ make run-server
 ## Prochaine étape
 
 **Bonus A** — TMDB : recherche externe, cache métadonnées.
+
+> Migrations : utiliser uniquement `internal/database/migrations/` (goose embed). Le dossier racine `migrations/` a été supprimé pour éviter la dérive.

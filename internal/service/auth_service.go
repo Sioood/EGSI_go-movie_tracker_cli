@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -76,8 +77,11 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (TokenP
 
 // Refresh validates a refresh token and issues a new token pair.
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
-	claims, err := auth.ParseToken(refreshToken, s.secret)
+	claims, err := auth.ParseRefreshToken(refreshToken, s.secret)
 	if err != nil {
+		if errors.Is(err, auth.ErrWrongTokenType) {
+			return TokenPair{}, apperrors.ErrInvalidCredentials
+		}
 		return TokenPair{}, apperrors.ErrInvalidCredentials
 	}
 

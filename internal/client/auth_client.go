@@ -32,11 +32,20 @@ type AuthClient struct {
 // NewAuthClient creates an AuthClient with a 10s timeout.
 func NewAuthClient(baseURL string) *AuthClient {
 	return &AuthClient{
-		BaseURL: strings.TrimRight(baseURL, "/"),
+		BaseURL: normalizeBaseURL(baseURL),
 		HTTPClient: &http.Client{
 			Timeout: defaultTimeout,
 		},
 	}
+}
+
+// SetBaseURL updates the API base URL (e.g. after a settings change).
+func (c *AuthClient) SetBaseURL(baseURL string) {
+	c.BaseURL = normalizeBaseURL(baseURL)
+}
+
+func normalizeBaseURL(baseURL string) string {
+	return strings.TrimRight(baseURL, "/")
 }
 
 func (c *AuthClient) client() *http.Client {

@@ -208,6 +208,8 @@ func main() {
 		State: initialState,
 		SaveConfig: func(cfg tui.Config) error {
 			runtime.offline.Store(cfg.OfflineMode)
+			authClient.SetBaseURL(cfg.ServerURL)
+			syncClient.SetBaseURL(cfg.ServerURL)
 			return config.SaveConfig(config.Config{
 				Theme:       cfg.Theme,
 				ServerURL:   cfg.ServerURL,
@@ -223,7 +225,10 @@ func main() {
 				Email:        state.Email,
 			})
 		},
-		ClearSession: config.ClearSession,
+		ClearSession: func() error {
+			runtime.session.Store(tui.SessionState{})
+			return config.ClearSession()
+		},
 	})
 
 	program := tea.NewProgram(model, tea.WithAltScreen())

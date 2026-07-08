@@ -269,3 +269,49 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Fatalf("unexpected body: %s", rr.Body.String())
 	}
 }
+
+func TestAccessTokenCannotRefresh(t *testing.T) {
+	router := newTestRouter(t)
+	rr := postJSON(t, router, "/api/register", map[string]string{
+		"email": "refresh-guard@example.com", "password": "mypassword",
+	})
+	pair := decodeTokenPair(t, rr)
+
+	rr2 := postJSON(t, router, "/api/refresh", map[string]string{
+		"refresh_token": pair.AccessToken,
+	})
+	if rr2.Code != http.StatusUnauthorized {
+		t.Fatalf("access token on /api/refresh: want 401, got %d: %s", rr2.Code, rr2.Body)
+	}
+}
+
+func TestRefreshTokenCannotAccessProtectedRoute(t *testing.T) {
+	router := newTestRouter(t)
+	rr := postJSON(t, router, "/api/register", map[string]string{
+		"email": "access-guard@example.com", "password": "mypassword",
+	})
+	pair := decodeTokenPair(t, rr)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.Header.Set("Authorization", "Bearer "+pair.RefreshToken)
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req)
+
+	if rr2.Code != http.StatusUnauthorized {
+		t.Fatalf("refresh token on /api/me: want 401, got %d: %s", rr2.Code, rr2.Body)
+	}
+}
+
+func TestRateLimitReturns429(t *testing.T) {
+	router := newTestRouter(t)
+	var lastCode int
+	for i := 0; i < 25; i++ {
+		rr := postJSON(t, router, "/api/login", map[string]string{
+			"email": "rate@example.com", "password": "wrongpassword",
+		})
+		lastCode = rr.Code
+	}
+	if lastCode != http.StatusTooManyRequests {
+		t.Fatalf("want 429 after burst, got %d", lastCode)
+	}
+}

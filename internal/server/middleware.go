@@ -21,7 +21,7 @@ func JWTMiddleware(secret []byte, next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := auth.ParseToken(strings.TrimPrefix(header, "Bearer "), secret)
+		claims, err := auth.ParseAccessToken(strings.TrimPrefix(header, "Bearer "), secret)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "token invalide")
 			return

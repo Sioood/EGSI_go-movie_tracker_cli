@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -67,7 +66,7 @@ func (h *movieHandler) create(w http.ResponseWriter, r *http.Request) {
 		Year       int    `json:"year"`
 		ExternalID string `json:"external_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "corps JSON invalide")
 		return
 	}
@@ -130,7 +129,7 @@ func (h *movieHandler) update(w http.ResponseWriter, r *http.Request) {
 		Year       int    `json:"year"`
 		ExternalID string `json:"external_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "corps JSON invalide")
 		return
 	}
@@ -201,7 +200,7 @@ func (h *movieHandler) watch(w http.ResponseWriter, r *http.Request) {
 		Review      string   `json:"review"`
 		WatchedAt   string   `json:"watched_at"` // YYYY-MM-DD or ""
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "corps JSON invalide")
 		return
 	}

@@ -2,6 +2,23 @@
 
 Tests manuels reproductibles avant release. Cocher chaque scénario après validation.
 
+## Validation automatisée (2026-07-08)
+
+Exécutée localement après l'audit phases 0–10 :
+
+| Vérification | Commande | Résultat |
+|--------------|----------|----------|
+| Tests unitaires/intégration | `make test` | 79 tests OK (16 packages) |
+| Lint | `make lint` | 0 issues |
+| Build | `make build` | OK |
+| Health serveur | `curl /health` | `{"status":"ok","version":"1.0.0"}` |
+| Register API | `POST /api/register` | 201 + tokens |
+| Movies sans auth | `GET /api/v1/movies` | 401 |
+| JWT typ claim | tests `TestAccessTokenCannotRefresh`, `TestRefreshTokenCannotAccessProtectedRoute` | OK |
+| Rate limiting | test `TestRateLimitReturns429` | OK |
+
+Les scénarios TUI interactifs ci-dessous restent **manuels** (nécessitent `make run-cli`).
+
 **Prérequis communs :**
 
 ```bash
@@ -239,4 +256,4 @@ make test   # tous verts
 make build
 ```
 
-- **Statut global v1.0** : [ ]
+- **Statut global v1.0** : [x] validation automatisée OK (2026-07-08) — scénarios TUI manuels à cocher avant release utilisateur

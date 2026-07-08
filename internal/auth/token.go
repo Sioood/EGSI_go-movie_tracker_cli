@@ -8,10 +8,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Claims is the JWT payload for both access and refresh tokens.
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
+)
+
+// Claims is the JWT payload for access and refresh tokens.
 type Claims struct {
-	UserID string `json:"uid"`
-	Email  string `json:"email"`
+	UserID    string `json:"uid"`
+	Email     string `json:"email"`
+	TokenType string `json:"typ"`
 	jwt.RegisteredClaims
 }
 
@@ -23,20 +29,24 @@ const (
 // ErrInvalidToken is returned when a JWT cannot be parsed or is expired.
 var ErrInvalidToken = errors.New("invalid token")
 
+// ErrWrongTokenType is returned when a token has an unexpected typ claim.
+var ErrWrongTokenType = errors.New("wrong token type")
+
 // GenerateAccessToken creates a short-lived signed JWT.
 func GenerateAccessToken(userID, email string, secret []byte) (string, error) {
-	return signToken(userID, email, secret, AccessTokenDuration)
+	return signToken(userID, email, TokenTypeAccess, secret, AccessTokenDuration)
 }
 
 // GenerateRefreshToken creates a long-lived signed JWT.
 func GenerateRefreshToken(userID, email string, secret []byte) (string, error) {
-	return signToken(userID, email, secret, RefreshTokenDuration)
+	return signToken(userID, email, TokenTypeRefresh, secret, RefreshTokenDuration)
 }
 
-func signToken(userID, email string, secret []byte, ttl time.Duration) (string, error) {
+func signToken(userID, email, tokenType string, secret []byte, ttl time.Duration) (string, error) {
 	claims := Claims{
-		UserID: userID,
-		Email:  email,
+		UserID:    userID,
+		Email:     email,
+		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -50,8 +60,34 @@ func signToken(userID, email string, secret []byte, ttl time.Duration) (string, 
 	return signed, nil
 }
 
+// ParseAccessToken validates an access JWT and returns its claims.
+func ParseAccessToken(tokenStr string, secret []byte) (*Claims, error) {
+	return parseTokenWithType(tokenStr, secret, TokenTypeAccess)
+}
+
+// ParseRefreshToken validates a refresh JWT and returns its claims.
+func ParseRefreshToken(tokenStr string, secret []byte) (*Claims, error) {
+	return parseTokenWithType(tokenStr, secret, TokenTypeRefresh)
+}
+
+func parseTokenWithType(tokenStr string, secret []byte, wantType string) (*Claims, error) {
+	claims, err := parseToken(tokenStr, secret)
+	if err != nil {
+		return nil, err
+	}
+	if claims.TokenType != wantType {
+		return nil, ErrWrongTokenType
+	}
+	return claims, nil
+}
+
 // ParseToken validates the signature and expiry of a signed JWT and returns its claims.
+// Prefer ParseAccessToken or ParseRefreshToken for endpoint-specific validation.
 func ParseToken(tokenStr string, secret []byte) (*Claims, error) {
+	return parseToken(tokenStr, secret)
+}
+
+func parseToken(tokenStr string, secret []byte) (*Claims, error) {
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("%w: unexpected signing method", ErrInvalidToken)

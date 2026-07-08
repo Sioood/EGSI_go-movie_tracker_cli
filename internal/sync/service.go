@@ -90,15 +90,10 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 
 		importResult, err := s.syncClient.Import(ctx, access, pushPayload)
 		if errors.Is(err, apperrors.ErrUnauthorized) {
-			newAccess, newRefresh, refreshErr := s.auth.Refresh(ctx, session.RefreshToken)
+			var refreshErr error
+			access, refreshErr = s.refreshAccess(ctx, &session)
 			if refreshErr != nil {
 				return refreshErr
-			}
-			access = newAccess
-			session.AccessToken = newAccess
-			session.RefreshToken = newRefresh
-			if s.onTokens != nil {
-				s.onTokens(newAccess, newRefresh)
 			}
 			importResult, err = s.syncClient.Import(ctx, access, pushPayload)
 		}
@@ -122,7 +117,12 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 
 		remote, err := s.syncClient.Export(ctx, access)
 		if errors.Is(err, apperrors.ErrUnauthorized) {
-			return err
+			var refreshErr error
+			access, refreshErr = s.refreshAccess(ctx, &session)
+			if refreshErr != nil {
+				return refreshErr
+			}
+			remote, err = s.syncClient.Export(ctx, access)
 		}
 		if err != nil {
 			return err
@@ -312,6 +312,19 @@ func (s *Service) MarkDeletePending(ctx context.Context, movieID string) error {
 // MarkPending wraps entity-specific pending markers.
 func (s *Service) MarkPending(ctx context.Context, entityType, entityID, operation string) error {
 	return s.syncRepo.MarkPending(ctx, entityType, entityID, operation)
+}
+
+func (s *Service) refreshAccess(ctx context.Context, session *SessionAccess) (string, error) {
+	newAccess, newRefresh, err := s.auth.Refresh(ctx, session.RefreshToken)
+	if err != nil {
+		return "", err
+	}
+	session.AccessToken = newAccess
+	session.RefreshToken = newRefresh
+	if s.onTokens != nil {
+		s.onTokens(newAccess, newRefresh)
+	}
+	return newAccess, nil
 }
 
 // ErrOffline indicates sync was skipped because the client is offline.

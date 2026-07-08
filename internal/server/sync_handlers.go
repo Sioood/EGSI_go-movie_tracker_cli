@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -52,7 +51,7 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 
 	var body syncPayload
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := decodeJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "corps JSON invalide")
 		return
 	}

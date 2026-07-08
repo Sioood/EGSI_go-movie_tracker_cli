@@ -16,7 +16,6 @@ RUN apk add --no-cache ca-certificates tzdata wget \
 
 WORKDIR /app
 COPY --from=builder /out/movietracker-server /app/movietracker-server
-COPY migrations/server /app/migrations/server
 
 ENV ADDR=:8080
 ENV DB_PATH=/data/server.db

@@ -466,3 +466,75 @@ func TestSyncImportLWWSkipsStaleMovie(t *testing.T) {
 		t.Fatalf("stale import should not overwrite title, got %q", payload.Movie.Title)
 	}
 }
+
+func TestMoviesRequireAuth(t *testing.T) {
+	router := newFullRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/movies", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401 without token, got %d", rr.Code)
+	}
+}
+
+func TestMovieListFilterAndSort(t *testing.T) {
+	router := newFullRouter(t)
+	token := registerAndLogin(t, router, "filtersort")
+
+	authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Zulu", "year": 2020})
+	rrB := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Alpha", "year": 2021})
+	var created struct{ Movie domain.Movie `json:"movie"` }
+	json.NewDecoder(rrB.Body).Decode(&created)
+
+	authPut(t, router, "/api/v1/movies/"+created.Movie.ID+"/watch", token, map[string]any{
+		"watched": true, "rating": 8.0, "watched_at": "2026-01-15",
+	})
+
+	rrWatched := authGet(t, router, "/api/v1/movies?filter=watched", token)
+	if rrWatched.Code != http.StatusOK {
+		t.Fatalf("watched filter: want 200, got %d", rrWatched.Code)
+	}
+	var watchedPayload struct {
+		Movies []struct {
+			Movie domain.Movie `json:"movie"`
+		} `json:"movies"`
+	}
+	json.NewDecoder(rrWatched.Body).Decode(&watchedPayload)
+	if len(watchedPayload.Movies) != 1 {
+		t.Fatalf("watched filter: want 1 movie, got %d", len(watchedPayload.Movies))
+	}
+	if watchedPayload.Movies[0].Movie.Title != "Alpha" {
+		t.Fatalf("watched filter: want Alpha, got %q", watchedPayload.Movies[0].Movie.Title)
+	}
+
+	rrSearch := authGet(t, router, "/api/v1/movies?q=Zulu&sort=title", token)
+	if rrSearch.Code != http.StatusOK {
+		t.Fatalf("search: want 200, got %d", rrSearch.Code)
+	}
+	var searchPayload struct {
+		Movies []struct {
+			Movie domain.Movie `json:"movie"`
+		} `json:"movies"`
+	}
+	json.NewDecoder(rrSearch.Body).Decode(&searchPayload)
+	if len(searchPayload.Movies) != 1 || searchPayload.Movies[0].Movie.Title != "Zulu" {
+		t.Fatalf("search q=Zulu: unexpected result %+v", searchPayload.Movies)
+	}
+}
+
+func TestMovieForbiddenCrossUserUpdate(t *testing.T) {
+	router := newFullRouter(t)
+	tokenA := registerAndLogin(t, router, "updA")
+	tokenB := registerAndLogin(t, router, "updB")
+
+	rr := authPost(t, router, "/api/v1/movies", tokenA, map[string]any{"title": "Owned", "year": 2020})
+	var created struct{ Movie domain.Movie `json:"movie"` }
+	json.NewDecoder(rr.Body).Decode(&created)
+
+	rrPut := authPut(t, router, "/api/v1/movies/"+created.Movie.ID, tokenB, map[string]any{
+		"title": "Hijacked", "year": 2020,
+	})
+	if rrPut.Code != http.StatusForbidden {
+		t.Fatalf("cross-user update: want 403, got %d", rrPut.Code)
+	}
+}

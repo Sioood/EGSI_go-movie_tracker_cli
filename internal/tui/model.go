@@ -485,6 +485,9 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.clearSession != nil {
 				_ = m.clearSession()
 			}
+			m.syncStatus = SyncStatusIdle
+			m.syncError = ""
+			m.pendingCount = 0
 			m.setMessage(messages.KindSuccess, messages.UI.LoggedOut)
 		}
 		return m, nil
