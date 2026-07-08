@@ -45,3 +45,10 @@ func defaultState() AppState {
 		},
 	}
 }
+
+func effectiveUserID(state AppState) string {
+	if state.Session.Authenticated && state.Session.ServerUserID != "" {
+		return state.Session.ServerUserID
+	}
+	return localUserID
+}

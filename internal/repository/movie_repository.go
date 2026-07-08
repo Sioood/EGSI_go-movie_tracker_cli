@@ -178,6 +178,55 @@ func (r *MovieRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// SyncUpsert applies a movie when incoming.UpdatedAt is newer than the existing row.
+// On equal timestamps the existing row wins. Returns applied=false when skipped.
+func (r *MovieRepository) SyncUpsert(ctx context.Context, movie domain.Movie) (domain.Movie, bool, error) {
+	existing, err := r.GetByID(ctx, movie.ID)
+	if errors.Is(err, apperrors.ErrMovieNotFound) {
+		if movie.ID == "" {
+			movie.ID = uuid.NewString()
+		}
+		now := time.Now().UTC()
+		if movie.CreatedAt.IsZero() {
+			movie.CreatedAt = now
+		}
+		if movie.UpdatedAt.IsZero() {
+			movie.UpdatedAt = now
+		}
+
+		_, err := r.db.ExecContext(ctx, `
+			INSERT INTO movies (id, user_id, title, year, external_id, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
+		if err != nil {
+			return domain.Movie{}, false, fmt.Errorf("%w: sync insert movie: %v", apperrors.ErrDB, err)
+		}
+		return movie, true, nil
+	}
+	if err != nil {
+		return domain.Movie{}, false, err
+	}
+
+	if !movie.UpdatedAt.After(existing.UpdatedAt) {
+		return existing, false, nil
+	}
+
+	_, err = r.db.ExecContext(ctx, `
+		UPDATE movies
+		SET user_id = ?, title = ?, year = ?, external_id = ?, updated_at = ?
+		WHERE id = ?
+	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, formatTime(movie.UpdatedAt), movie.ID)
+	if err != nil {
+		return domain.Movie{}, false, fmt.Errorf("%w: sync update movie: %v", apperrors.ErrDB, err)
+	}
+
+	updated, err := r.GetByID(ctx, movie.ID)
+	if err != nil {
+		return domain.Movie{}, false, err
+	}
+	return updated, true, nil
+}
+
 type movieScanner interface {
 	Scan(dest ...any) error
 }

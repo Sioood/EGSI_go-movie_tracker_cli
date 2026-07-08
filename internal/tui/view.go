@@ -72,7 +72,8 @@ func connectionStatus(state AppState) string {
 }
 
 func (m Model) footerView() string {
-	help := "↑/↓ naviguer • entrée sélectionner • / chercher • f filtre • t tri • a ajouter • q quitter"
+	syncLine := m.syncFooterLine()
+	help := "↑/↓ naviguer • entrée sélectionner • / chercher • f filtre • t tri • a ajouter • S sync • q quitter"
 	switch m.route {
 	case RouteSplash:
 		help = "entrée commencer • q quitter"
@@ -81,7 +82,7 @@ func (m Model) footerView() string {
 	case RouteMovieDetail:
 		help = "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste"
 	case RouteStats:
-		help = "m menu • s paramètres • l connexion • ? aide • q quitter"
+		help = "m menu • s paramètres • l connexion • S sync • ? aide • q quitter"
 	case RouteSettings, RouteLogin, RouteRegister:
 		help = "tab champ suivant • entrée valider • esc menu • q quitter"
 		if m.route == RouteLogin {
@@ -94,7 +95,31 @@ func (m Model) footerView() string {
 			help = "tab champ suivant • o hors ligne • d déconnexion • entrée enregistrer • esc menu • q quitter"
 		}
 	}
+	if syncLine != "" {
+		return subtleStyle.Render(syncLine + "  |  " + help)
+	}
 	return subtleStyle.Render(help)
+}
+
+func (m Model) syncFooterLine() string {
+	if m.state.Config.OfflineMode {
+		return "sync · hors ligne"
+	}
+	switch m.syncStatus {
+	case SyncStatusSyncing:
+		return "sync · en cours..."
+	case SyncStatusError:
+		return "sync · erreur"
+	case SyncStatusPending:
+		return fmt.Sprintf("sync · %d en attente", m.pendingCount)
+	case SyncStatusSynced:
+		return "sync · à jour"
+	default:
+		if m.pendingCount > 0 {
+			return fmt.Sprintf("sync · %d en attente", m.pendingCount)
+		}
+		return "sync · prêt"
+	}
 }
 
 func (m Model) bodyView() string {
@@ -359,6 +384,7 @@ func (m Model) helpView() string {
 		"Tab         changer de champ",
 		"w           marquer vu aujourd'hui",
 		"u           marquer non vu",
+		"S           synchroniser",
 		"Esc ou m    revenir en arrière",
 		"s           paramètres",
 		"l           connexion",

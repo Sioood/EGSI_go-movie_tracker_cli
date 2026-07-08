@@ -30,6 +30,41 @@ func (r *WatchEntryRepository) Upsert(ctx context.Context, entry domain.WatchEnt
 	}
 	entry.UpdatedAt = now
 
+	saved, _, err := r.insertWatchEntry(ctx, entry)
+	return saved, err
+}
+
+// SyncUpsert applies a watch entry when incoming.UpdatedAt is newer than the existing row.
+func (r *WatchEntryRepository) SyncUpsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, bool, error) {
+	if entry.RatingScale == 0 {
+		entry.RatingScale = 10
+	}
+
+	existing, err := r.GetByMovieID(ctx, entry.MovieID)
+	if errors.Is(err, apperrors.ErrWatchEntryNotFound) {
+		if entry.ID == "" {
+			entry.ID = uuid.NewString()
+		}
+		if entry.UpdatedAt.IsZero() {
+			entry.UpdatedAt = time.Now().UTC()
+		}
+		return r.insertWatchEntry(ctx, entry)
+	}
+	if err != nil {
+		return domain.WatchEntry{}, false, err
+	}
+
+	if !entry.UpdatedAt.After(existing.UpdatedAt) {
+		return existing, false, nil
+	}
+
+	if entry.ID == "" {
+		entry.ID = existing.ID
+	}
+	return r.insertWatchEntry(ctx, entry)
+}
+
+func (r *WatchEntryRepository) insertWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, bool, error) {
 	var watchedAt any
 	if entry.WatchedAt != nil {
 		watchedAt = formatTime(*entry.WatchedAt)
@@ -47,10 +82,38 @@ func (r *WatchEntryRepository) Upsert(ctx context.Context, entry domain.WatchEnt
 			updated_at = excluded.updated_at
 	`, entry.ID, entry.MovieID, entry.Watched, entry.Rating, entry.RatingScale, entry.Review, watchedAt, formatTime(entry.UpdatedAt))
 	if err != nil {
-		return domain.WatchEntry{}, fmt.Errorf("%w: upsert watch entry: %v", apperrors.ErrDB, err)
+		return domain.WatchEntry{}, false, fmt.Errorf("%w: sync upsert watch entry: %v", apperrors.ErrDB, err)
 	}
 
-	return r.GetByMovieID(ctx, entry.MovieID)
+	saved, err := r.GetByMovieID(ctx, entry.MovieID)
+	if err != nil {
+		return domain.WatchEntry{}, false, err
+	}
+	return saved, true, nil
+}
+
+func (r *WatchEntryRepository) ListAll(ctx context.Context) ([]domain.WatchEntry, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, movie_id, watched, rating, rating_scale, review, watched_at, updated_at
+		FROM watch_entries
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("%w: list watch entries: %v", apperrors.ErrDB, err)
+	}
+	defer rows.Close()
+
+	var entries []domain.WatchEntry
+	for rows.Next() {
+		entry, err := scanWatchEntry(rows)
+		if err != nil {
+			return nil, fmt.Errorf("%w: scan watch entry: %v", apperrors.ErrDB, err)
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate watch entries: %v", apperrors.ErrDB, err)
+	}
+	return entries, nil
 }
 
 func (r *WatchEntryRepository) GetByMovieID(ctx context.Context, movieID string) (domain.WatchEntry, error) {

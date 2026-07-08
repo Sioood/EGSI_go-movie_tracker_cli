@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/movietracker/movie-tracker/internal/database"
 	"github.com/movietracker/movie-tracker/internal/domain"
@@ -412,5 +413,56 @@ func TestSyncImportRejectsOtherUsersMovies(t *testing.T) {
 	json.NewDecoder(rrImport.Body).Decode(&result)
 	if result["synced_watch_entries"] != 0 {
 		t.Fatalf("cross-user watch entry should be rejected, got synced=%d", result["synced_watch_entries"])
+	}
+}
+
+func TestSyncDeleteMovies(t *testing.T) {
+	router := newFullRouter(t)
+	token := registerAndLogin(t, router, "syncdel")
+
+	rr := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "To Delete", "year": 2020})
+	var created struct{ Movie domain.Movie `json:"movie"` }
+	json.NewDecoder(rr.Body).Decode(&created)
+
+	rrImport := authPost(t, router, "/api/v1/sync", token, map[string]any{
+		"movies":            []any{},
+		"watch_entries":     []any{},
+		"deleted_movie_ids": []string{created.Movie.ID},
+	})
+	if rrImport.Code != http.StatusOK {
+		t.Fatalf("import delete: want 200, got %d: %s", rrImport.Code, rrImport.Body)
+	}
+
+	rrGet := authGet(t, router, "/api/v1/movies/"+created.Movie.ID, token)
+	if rrGet.Code != http.StatusNotFound {
+		t.Fatalf("expected deleted movie 404, got %d", rrGet.Code)
+	}
+}
+
+func TestSyncImportLWWSkipsStaleMovie(t *testing.T) {
+	router := newFullRouter(t)
+	token := registerAndLogin(t, router, "synclww")
+
+	rr := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Current", "year": 2020})
+	var created struct{ Movie domain.Movie `json:"movie"` }
+	json.NewDecoder(rr.Body).Decode(&created)
+
+	stale := created.Movie
+	stale.Title = "Stale"
+	stale.UpdatedAt = created.Movie.UpdatedAt.Add(-2 * time.Hour)
+
+	rrImport := authPost(t, router, "/api/v1/sync", token, map[string]any{
+		"movies":        []domain.Movie{stale},
+		"watch_entries": []any{},
+	})
+	if rrImport.Code != http.StatusOK {
+		t.Fatalf("import stale: want 200, got %d", rrImport.Code)
+	}
+
+	rrGet := authGet(t, router, "/api/v1/movies/"+created.Movie.ID, token)
+	var payload struct{ Movie domain.Movie `json:"movie"` }
+	json.NewDecoder(rrGet.Body).Decode(&payload)
+	if payload.Movie.Title != "Current" {
+		t.Fatalf("stale import should not overwrite title, got %q", payload.Movie.Title)
 	}
 }

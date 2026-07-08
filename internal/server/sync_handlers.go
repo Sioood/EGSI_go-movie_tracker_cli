@@ -17,9 +17,10 @@ type syncHandler struct {
 }
 
 type syncPayload struct {
-	Movies       []domain.Movie      `json:"movies"`
-	WatchEntries []domain.WatchEntry `json:"watch_entries"`
-	SyncedAt     time.Time           `json:"synced_at"`
+	Movies          []domain.Movie      `json:"movies"`
+	WatchEntries    []domain.WatchEntry `json:"watch_entries"`
+	DeletedMovieIDs []string            `json:"deleted_movie_ids"`
+	SyncedAt        time.Time           `json:"synced_at"`
 }
 
 // GET /api/v1/sync — export the authenticated user's full dataset.
@@ -47,9 +48,7 @@ func (h *syncHandler) export(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /api/v1/sync — import a dataset, upserting movies then watch entries.
-// The UserID on every movie is forced to the authenticated user.
-// Watch entries are only processed for movies that were successfully synced.
+// POST /api/v1/sync — import a dataset with deletes, movie upserts, then watch entries.
 func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 
@@ -59,23 +58,38 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Phase 1: upsert movies — record which IDs were accepted.
+	deleted := 0
+	for _, id := range body.DeletedMovieIDs {
+		movie, err := h.movies.GetMovie(r.Context(), id)
+		if errors.Is(err, apperrors.ErrMovieNotFound) {
+			continue
+		}
+		if err != nil {
+			continue
+		}
+		if movie.UserID != claims.UserID {
+			continue
+		}
+		if err := h.movies.DeleteMovie(r.Context(), id); err == nil {
+			deleted++
+		}
+	}
+
 	syncedMovieIDs := make(map[string]bool, len(body.Movies))
 	for _, m := range body.Movies {
-		m.UserID = claims.UserID
-		saved, err := syncUpsertMovie(r.Context(), h.movies, m)
+		saved, _, err := h.movies.SyncUpsertMovie(r.Context(), claims.UserID, m)
 		if err == nil {
 			syncedMovieIDs[saved.ID] = true
 		}
 	}
 
-	// Phase 2: upsert watch entries only for the user's movies synced above.
 	syncedEntries := 0
 	for _, entry := range body.WatchEntries {
-		if !syncedMovieIDs[entry.MovieID] {
+		movie, err := h.movies.GetMovie(r.Context(), entry.MovieID)
+		if err != nil || movie.UserID != claims.UserID {
 			continue
 		}
-		if _, err := h.movies.SaveWatchEntry(r.Context(), entry); err == nil {
+		if _, _, err := h.movies.SyncUpsertWatchEntry(r.Context(), entry); err == nil {
 			syncedEntries++
 		}
 	}
@@ -83,15 +97,12 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"synced_movies":        len(syncedMovieIDs),
 		"synced_watch_entries": syncedEntries,
+		"deleted_movies":       deleted,
 	})
 }
 
-// syncUpsertMovie attempts to update an existing movie; if not found it creates it.
-func syncUpsertMovie(ctx context.Context, svc *service.MovieService, m domain.Movie) (domain.Movie, error) {
-	saved, err := svc.UpdateMovie(ctx, m)
-	if errors.Is(err, apperrors.ErrMovieNotFound) {
-		return svc.CreateMovie(ctx, m)
-	}
+// syncUpsertMovie is kept for backward compatibility in tests if referenced.
+func syncUpsertMovie(ctx context.Context, svc *service.MovieService, ownerID string, m domain.Movie) (domain.Movie, error) {
+	saved, _, err := svc.SyncUpsertMovie(ctx, ownerID, m)
 	return saved, err
 }
-

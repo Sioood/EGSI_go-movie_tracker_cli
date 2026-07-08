@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 8** — Connexion TUI ↔ serveur.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 9** — Sync hybride.
 
 **Dernière mise à jour** : 2026-07-08  
-**Phase en cours** : Phase 9 — Sync hybride
+**Phase en cours** : Phase 10 — Robustesse et polish
 
-**Progression globale** : `9 / 14` phases terminées
+**Progression globale** : `10 / 14` phases terminées
 
 ---
 
@@ -20,7 +20,7 @@
 - [x] **Phase 6** — [Auth serveur](#phase-6--authentification-serveur) · P0 · Moyen-Difficile · ~4j
 - [x] **Phase 7** — [API REST](#phase-7--api-rest-films) · P0 · Moyen · ~3j
 - [x] **Phase 8** — [Login TUI](#phase-8--connexion-tui--serveur) · P0 · Moyen · ~2j
-- [ ] **Phase 9** — [Sync hybride](#phase-9--sync-hybride) · P0 · Difficile · ~5j
+- [x] **Phase 9** — [Sync hybride](#phase-9--sync-hybride) · P0 · Difficile · ~5j
 - [ ] **Phase 10** — [Polish](#phase-10--robustesse-et-polish) · P1 · Moyen · ~3j
 - [ ] **Bonus A** — [TMDB](#bonus-a--intégration-tmdb) · P2 · Moyen · ~3j
 - [ ] **Bonus B** — [Export CSV/JSON](#bonus-b--export-csv--json) · P3 · Facile · ~1j
@@ -284,19 +284,19 @@ make run-server
 
 ## Phase 9 — Sync hybride
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Difficile | **Temps** : ~5 jours
 
 #### Tâches
 
-- [ ] sync_metadata, push/pull pending
-- [ ] Last-write-wins
-- [ ] Indicateur footer, sync S + 30s
-- [ ] Retry exponentiel
+- [x] sync_metadata, push/pull pending
+- [x] Last-write-wins
+- [x] Indicateur footer, sync S + 30s
+- [x] Retry exponentiel
 
 #### Livrables
 
-- [ ] Sync local ↔ serveur
+- [x] Sync local ↔ serveur
 
 ---
 
@@ -348,7 +348,7 @@ make run-server
 | 6 | Auth serveur | P0 | [x] | 0 |
 | 7 | API REST | P0 | [x] | 1, 6 |
 | 8 | Login TUI | P0 | [x] | 2, 6 |
-| 9 | Sync hybride | P0 | [ ] | 7, 8 |
+| 9 | Sync hybride | P0 | [x] | 7, 8 |
 | 10 | Polish | P1 | [ ] | 9 |
 | A | TMDB | P2 | [ ] | 7, 3 |
 | B | Export | P3 | [ ] | 1 |
@@ -358,4 +358,4 @@ make run-server
 
 ## Prochaine étape
 
-**Phase 9** — Sync hybride : sync_metadata, push/pull pending, last-write-wins, indicateur footer.
+**Phase 10** — Robustesse et polish : messages TUI centralisés, écran aide complet, tests E2E, docker-compose.

@@ -45,12 +45,14 @@ type UserInfo struct {
 
 // Options configures the TUI model at startup.
 type Options struct {
-	MovieService MovieClient
-	Auth         AuthClient
-	State        AppState
-	SaveConfig   func(Config) error
-	SaveSession  func(SessionState) error
-	ClearSession func() error
+	MovieService  MovieClient
+	Auth          AuthClient
+	SyncRunner    SyncRunner
+	ResolveUserID func() string
+	State         AppState
+	SaveConfig    func(Config) error
+	SaveSession   func(SessionState) error
+	ClearSession  func() error
 }
 
 type authResultMsg struct {
@@ -70,6 +72,13 @@ type Model struct {
 	saveConfig           func(Config) error
 	saveSession          func(SessionState) error
 	clearSession         func() error
+	syncRunner           SyncRunner
+	resolveUserID        func() string
+	syncStatus           SyncStatus
+	pendingCount         int
+	lastSyncAt           time.Time
+	syncSyncing          bool
+	syncError            string
 	menu                 list.Model
 	movies               list.Model
 	movieRecords         []domain.Movie
@@ -146,6 +155,9 @@ func New(opts Options) Model {
 		saveConfig:           opts.SaveConfig,
 		saveSession:          opts.SaveSession,
 		clearSession:         opts.ClearSession,
+		syncRunner:           opts.SyncRunner,
+		resolveUserID:        opts.ResolveUserID,
+		syncStatus:           SyncStatusIdle,
 		menu:                 menu,
 		movies:               movies,
 		watchEntries:         make(map[string]domain.WatchEntry),
@@ -164,6 +176,7 @@ func New(opts Options) Model {
 		sort:                 domain.MovieSortTitle,
 	}
 	model.refreshMovies()
+	model.refreshPendingCount()
 	return model
 }
 
@@ -182,7 +195,11 @@ func newPasswordInput(placeholder string, limit int) textinput.Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+	cmds := []tea.Cmd{textinput.Blink}
+	if tick := m.scheduleSyncTick(); tick != nil {
+		cmds = append(cmds, tick)
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -194,6 +211,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case authResultMsg:
 		return m.handleAuthResult(msg)
+	case SyncRequestMsg:
+		return m.startSync()
+	case syncTickMsg:
+		return m.startSync()
+	case syncResultMsg:
+		return m.handleSyncResult(msg)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -226,7 +249,7 @@ func (m Model) handleAuthResult(msg authResultMsg) (tea.Model, tea.Cmd) {
 		m.message = "Session restaurée pour " + msg.session.Email
 	}
 	m.goTo(RouteMainMenu)
-	return m, nil
+	return m.startSync()
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -297,6 +320,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.route != RouteSplash && m.route != RouteLogin && m.route != RouteRegister && m.route != RouteSettings {
 			m.goTo(RouteLogin)
 			return m, nil
+		}
+	case "S":
+		if m.route != RouteMovieForm && m.route != RouteLogin && m.route != RouteRegister && m.route != RouteSettings {
+			if !m.searchInput.Focused() {
+				return m.startSync()
+			}
 		}
 	}
 
@@ -426,6 +455,9 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "o":
 		m.state.Config.OfflineMode = !m.state.Config.OfflineMode
 		m.message = fmt.Sprintf("Mode hors ligne : %t", m.state.Config.OfflineMode)
+		if m.saveConfig != nil {
+			_ = m.saveConfig(m.state.Config)
+		}
 		return m, nil
 	case "d":
 		if m.state.Session.Authenticated {
@@ -826,7 +858,7 @@ func (m *Model) refreshMovies() {
 	}
 
 	movies, err := m.service.SearchMovies(context.Background(), domain.MovieSearchParams{
-		UserID: localUserID,
+		UserID: m.currentUserID(),
 		Query:  m.searchInput.Value(),
 		Filter: m.filter,
 		Sort:   m.sort,
@@ -858,7 +890,7 @@ func (m *Model) refreshStats() {
 	if m.service == nil {
 		return
 	}
-	stats, err := m.service.GetStats(context.Background(), localUserID)
+	stats, err := m.service.GetStats(context.Background(), m.currentUserID())
 	if err != nil {
 		m.message = "Stats indisponibles : " + err.Error()
 		return
@@ -893,7 +925,7 @@ func (m *Model) createMovieFromForm() (domain.Movie, error) {
 	}
 
 	return m.service.CreateMovie(context.Background(), domain.Movie{
-		UserID: localUserID,
+		UserID: m.currentUserID(),
 		Title:  m.titleInput.Value(),
 		Year:   year,
 	})

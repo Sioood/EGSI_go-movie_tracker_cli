@@ -54,6 +54,10 @@ func (fakeMovieStore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (fakeMovieStore) SyncUpsert(ctx context.Context, movie domain.Movie) (domain.Movie, bool, error) {
+	return movie, true, nil
+}
+
 type fakeWatchEntryStore struct{}
 
 func (fakeWatchEntryStore) Upsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error) {
@@ -66,4 +70,8 @@ func (fakeWatchEntryStore) GetByMovieID(ctx context.Context, movieID string) (do
 
 func (fakeWatchEntryStore) DeleteByMovieID(ctx context.Context, movieID string) error {
 	return nil
+}
+
+func (fakeWatchEntryStore) SyncUpsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, bool, error) {
+	return entry, true, nil
 }

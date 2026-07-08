@@ -16,12 +16,14 @@ type MovieStore interface {
 	Search(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error)
 	Update(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	Delete(ctx context.Context, id string) error
+	SyncUpsert(ctx context.Context, movie domain.Movie) (domain.Movie, bool, error)
 }
 
 type WatchEntryStore interface {
 	Upsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error)
 	GetByMovieID(ctx context.Context, movieID string) (domain.WatchEntry, error)
 	DeleteByMovieID(ctx context.Context, movieID string) error
+	SyncUpsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, bool, error)
 }
 
 type MovieService struct {
@@ -87,6 +89,33 @@ func (s *MovieService) SaveWatchEntry(ctx context.Context, entry domain.WatchEnt
 
 func (s *MovieService) GetWatchEntry(ctx context.Context, movieID string) (domain.WatchEntry, error) {
 	return s.watchEntries.GetByMovieID(ctx, movieID)
+}
+
+// SyncUpsertMovie imports a movie during sync with last-write-wins semantics.
+func (s *MovieService) SyncUpsertMovie(ctx context.Context, ownerID string, movie domain.Movie) (domain.Movie, bool, error) {
+	movie.Title = strings.TrimSpace(movie.Title)
+	if err := validateMovie(movie); err != nil {
+		return domain.Movie{}, false, err
+	}
+
+	existing, err := s.movies.GetByID(ctx, movie.ID)
+	if err == nil && existing.UserID != ownerID {
+		return domain.Movie{}, false, fmt.Errorf("%w: movie belongs to another user", apperrors.ErrForbidden)
+	}
+
+	movie.UserID = ownerID
+	return s.movies.SyncUpsert(ctx, movie)
+}
+
+// SyncUpsertWatchEntry imports a watch entry during sync with last-write-wins semantics.
+func (s *MovieService) SyncUpsertWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, bool, error) {
+	if entry.RatingScale == 0 {
+		entry.RatingScale = 10
+	}
+	if err := validateWatchEntry(entry); err != nil {
+		return domain.WatchEntry{}, false, err
+	}
+	return s.watchEntries.SyncUpsert(ctx, entry)
 }
 
 func validateMovie(movie domain.Movie) error {
