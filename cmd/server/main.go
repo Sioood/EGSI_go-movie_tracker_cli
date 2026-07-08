@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/movietracker/movie-tracker/internal/repository"
 	"github.com/movietracker/movie-tracker/internal/server"
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/version"
 )
 
 func main() {
@@ -31,7 +33,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	dbPath := "data/server.db"
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "data/server.db"
+	}
+	if dir := filepath.Dir(dbPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			logger.Error("create database directory", "dir", dir, "err", err)
+			os.Exit(1)
+		}
+	}
 	dsn := "file:" + dbPath + "?_pragma=foreign_keys(1)"
 	db, err := database.OpenAndMigrate(dsn, database.ServerMigrations, "migrations/server")
 	if err != nil {
@@ -71,7 +82,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	logger.Info("MovieTracker server ready", "phase", 6, "addr", addr, "database", dbPath)
+	logger.Info("MovieTracker server ready", "version", version.Version, "addr", addr, "database", dbPath)
 
 	go func() {
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {

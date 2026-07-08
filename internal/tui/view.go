@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/tui/messages"
+	"github.com/movietracker/movie-tracker/internal/version"
 )
 
 var (
@@ -56,44 +58,39 @@ func (m Model) View() string {
 
 func (m Model) headerView() string {
 	user := connectionStatus(m.state)
-	right := subtleStyle.Render(fmt.Sprintf("theme %s | %s", m.state.Config.Theme, user))
-	line := lipgloss.JoinHorizontal(lipgloss.Top, titleStyle.Render("MovieTracker"), "  ", right)
+	right := subtleStyle.Render(messages.ThemeHeader(m.state.Config.Theme, user))
+	line := lipgloss.JoinHorizontal(lipgloss.Top, titleStyle.Render(messages.UI.AppName+" v"+version.Version), "  ", right)
 	return line
 }
 
 func connectionStatus(state AppState) string {
 	if state.Config.OfflineMode {
-		return "hors ligne"
+		return messages.UI.StatusOffline
 	}
 	if state.Session.Authenticated && state.Session.Email != "" {
-		return state.Session.Email + " · en ligne"
+		return state.Session.Email + messages.UI.StatusOnlineSuffix
 	}
-	return "non connecté"
+	return messages.UI.StatusDisconnected
 }
 
 func (m Model) footerView() string {
 	syncLine := m.syncFooterLine()
-	help := "↑/↓ naviguer • entrée sélectionner • / chercher • f filtre • t tri • a ajouter • S sync • q quitter"
+	help := messages.UI.FooterDefault
 	switch m.route {
 	case RouteSplash:
-		help = "entrée commencer • q quitter"
+		help = messages.UI.FooterSplash
 	case RouteMovieForm:
-		help = "tab changer de champ • entrée ajouter • esc liste • q quitter"
+		help = messages.UI.FooterMovieForm
 	case RouteMovieDetail:
-		help = "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste"
+		help = messages.UI.FooterMovieDetail
 	case RouteStats:
-		help = "m menu • s paramètres • l connexion • S sync • ? aide • q quitter"
-	case RouteSettings, RouteLogin, RouteRegister:
-		help = "tab champ suivant • entrée valider • esc menu • q quitter"
-		if m.route == RouteLogin {
-			help = "tab champ suivant • entrée connexion • r inscription • esc menu • q quitter"
-		}
-		if m.route == RouteRegister {
-			help = "tab champ suivant • entrée inscription • esc connexion • q quitter"
-		}
-		if m.route == RouteSettings {
-			help = "tab champ suivant • o hors ligne • d déconnexion • entrée enregistrer • esc menu • q quitter"
-		}
+		help = messages.UI.FooterStats
+	case RouteSettings:
+		help = messages.UI.FooterSettings
+	case RouteLogin:
+		help = messages.UI.FooterLogin
+	case RouteRegister:
+		help = messages.UI.FooterRegister
 	}
 	if syncLine != "" {
 		return subtleStyle.Render(syncLine + "  |  " + help)
@@ -103,23 +100,37 @@ func (m Model) footerView() string {
 
 func (m Model) syncFooterLine() string {
 	if m.state.Config.OfflineMode {
-		return "sync · hors ligne"
+		return messages.UI.SyncOffline
 	}
 	switch m.syncStatus {
 	case SyncStatusSyncing:
-		return "sync · en cours..."
+		return messages.UI.SyncSyncing
 	case SyncStatusError:
-		return "sync · erreur"
+		detail := strings.TrimSpace(m.syncError)
+		if detail == "" {
+			return messages.UI.SyncError
+		}
+		return messages.UI.SyncError + " : " + truncate(detail, 40)
 	case SyncStatusPending:
-		return fmt.Sprintf("sync · %d en attente", m.pendingCount)
+		return messages.SyncPendingLine(m.pendingCount)
 	case SyncStatusSynced:
-		return "sync · à jour"
+		return messages.UI.SyncUpToDate
 	default:
 		if m.pendingCount > 0 {
-			return fmt.Sprintf("sync · %d en attente", m.pendingCount)
+			return messages.SyncPendingLine(m.pendingCount)
 		}
-		return "sync · prêt"
+		return messages.UI.SyncReady
 	}
+}
+
+func truncate(text string, max int) string {
+	if len(text) <= max {
+		return text
+	}
+	if max <= 3 {
+		return text[:max]
+	}
+	return text[:max-3] + "..."
 }
 
 func (m Model) bodyView() string {
@@ -151,66 +162,68 @@ func (m Model) bodyView() string {
 
 func (m Model) splashView() string {
 	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render("Bienvenue dans MovieTracker"),
+		activeStyle.Render(messages.UI.SplashWelcome),
 		"",
-		"Une TUI pour suivre les films vus, les notes et les critiques.",
+		messages.UI.SplashTagline,
 		"",
-		"Appuie sur Entrée pour ouvrir le menu.",
+		messages.UI.SplashEnter,
 	}, "\n"))
 }
 
 func (m Model) movieListView() string {
 	searchBlock := strings.Join([]string{
-		label("Recherche", m.searchInput.Focused()),
+		label(messages.UI.SearchLabel, m.searchInput.Focused()),
 		m.searchInput.View(),
-		subtleStyle.Render("Filtre : " + filterLabel(m.filter) + " | Tri : " + sortLabel(m.sort) + " | f filtre | t tri | c reset"),
+		subtleStyle.Render(fmt.Sprintf(messages.UI.FilterSortHint, messages.FilterLabel(m.filter), messages.SortLabel(m.sort))),
 	}, "\n")
 
 	if len(m.movieRecords) == 0 {
-		emptyMessage := "Aucun film enregistré pour l'instant."
-		if strings.TrimSpace(m.searchInput.Value()) != "" || m.filter != "all" {
-			emptyMessage = "Aucun film ne correspond à la recherche."
+		emptyMessage := messages.UI.EmptyMovies
+		if strings.TrimSpace(m.searchInput.Value()) != "" || m.filter != domain.MovieFilterAll {
+			emptyMessage = messages.UI.EmptySearch
 		}
 		return panelStyle.Render(strings.Join([]string{
-			activeStyle.Render("Films"),
+			activeStyle.Render(messages.UI.MoviesTitle),
 			"",
 			searchBlock,
 			"",
 			emptyMessage,
-			"Appuie sur a pour ajouter un film.",
+			messages.UI.AddMovieHint,
 			"",
-			statusLine(m.message),
+			statusLine(m.messageKind, m.message),
 		}, "\n"))
 	}
 
 	lines := []string{panelStyle.Render(searchBlock), m.movies.View()}
 	if m.message != "" {
-		lines = append(lines, "", statusLine(m.message))
+		lines = append(lines, "", statusLine(m.messageKind, m.message))
 	}
 	return strings.Join(lines, "\n")
 }
 
 func (m Model) movieFormView() string {
 	message := m.message
+	kind := m.messageKind
 	if message == "" {
-		message = "Titre obligatoire, année optionnelle."
+		message = messages.UI.MovieFormHint
+		kind = messages.KindInfo
 	}
 
 	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render("Ajouter un film"),
+		activeStyle.Render(messages.UI.AddMovieTitle),
 		"",
-		label("Titre", m.formFocus == 0),
+		label(messages.UI.TitleLabel, m.formFocus == 0),
 		m.titleInput.View(),
 		"",
-		label("Année", m.formFocus == 1),
+		label(messages.UI.YearLabel, m.formFocus == 1),
 		m.yearInput.View(),
 		"",
-		statusLine(message),
+		statusLine(kind, message),
 	}, "\n"))
 }
 
 func (m Model) movieDetailView() string {
-	title := "Détail film"
+	title := messages.UI.MovieDetailTitle
 	if m.selectedMovie.Title != "" {
 		title = m.selectedMovie.Title
 		if m.selectedMovie.Year > 0 {
@@ -218,78 +231,80 @@ func (m Model) movieDetailView() string {
 		}
 	}
 
-	watched := "non"
+	watched := messages.UI.WatchedNo
 	if m.selectedEntry.Watched {
-		watched = "oui"
+		watched = messages.UI.WatchedYes
 	}
 
 	message := m.message
+	kind := m.messageKind
 	if message == "" {
-		message = "Modifie les champs puis valide avec Entrée."
+		message = messages.UI.MovieDetailHint
+		kind = messages.KindInfo
 	}
 
 	return panelStyle.Render(strings.Join([]string{
 		activeStyle.Render(title),
 		subtleStyle.Render("Vu : " + watched),
 		"",
-		label("Note /10", m.detailFocus == 0),
+		label(messages.UI.RatingLabel, m.detailFocus == 0),
 		m.ratingInput.View(),
 		"",
-		label("Date de visionnage", m.detailFocus == 1),
+		label(messages.UI.WatchedAtLabel, m.detailFocus == 1),
 		m.watchedAtInput.View(),
 		"",
-		label("Critique", m.detailFocus == 2),
+		label(messages.UI.ReviewLabel, m.detailFocus == 2),
 		m.reviewInput.View(),
 		"",
-		statusLine(message),
+		statusLine(kind, message),
 	}, "\n"))
 }
 
 func (m Model) statsView() string {
 	s := m.stats
 	lines := []string{
-		activeStyle.Render("Statistiques"),
+		activeStyle.Render(messages.UI.StatsTitle),
 		"",
-		fmt.Sprintf("%-22s %d", "Films suivis", s.TotalMovies),
-		fmt.Sprintf("%-22s %d", "Films vus", s.TotalWatched),
-		fmt.Sprintf("%-22s %d", "Films notés", s.TotalRated),
+		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalMovies, s.TotalMovies),
+		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalWatched, s.TotalWatched),
+		fmt.Sprintf("%-22s %d", messages.UI.StatsTotalRated, s.TotalRated),
 	}
 
 	if s.TotalRated > 0 {
-		lines = append(lines, fmt.Sprintf("%-22s %.1f / 10", "Note moyenne", s.AverageRating))
+		lines = append(lines, fmt.Sprintf("%-22s "+messages.UI.StatsRatingFmt, messages.UI.StatsAverageRating, s.AverageRating))
 	} else {
-		lines = append(lines, fmt.Sprintf("%-22s %s", "Note moyenne", subtleStyle.Render("—")))
+		lines = append(lines, fmt.Sprintf("%-22s %s", messages.UI.StatsAverageRating, subtleStyle.Render("—")))
 	}
 
 	if len(s.BestMovies) > 0 {
-		lines = append(lines, "", labelStyle.Render("Meilleur(s) film(s)"))
+		lines = append(lines, "", labelStyle.Render(messages.UI.StatsBestMovies))
 		for _, mr := range s.BestMovies {
 			title := mr.Movie.Title
 			if mr.Movie.Year > 0 {
 				title = fmt.Sprintf("%s (%d)", title, mr.Movie.Year)
 			}
-			lines = append(lines, fmt.Sprintf("  %-32s %.1f / 10", title, mr.Rating))
+			lines = append(lines, fmt.Sprintf("  %-32s "+messages.UI.StatsRatingFmt, title, mr.Rating))
 		}
 	}
 
 	if len(s.WorstMovies) > 0 {
-		lines = append(lines, "", labelStyle.Render("Film(s) les moins aimés"))
+		lines = append(lines, "", labelStyle.Render(messages.UI.StatsWorstMovies))
 		for _, mr := range s.WorstMovies {
 			title := mr.Movie.Title
 			if mr.Movie.Year > 0 {
 				title = fmt.Sprintf("%s (%d)", title, mr.Movie.Year)
 			}
-			lines = append(lines, fmt.Sprintf("  %-32s %.1f / 10", title, mr.Rating))
+			lines = append(lines, fmt.Sprintf("  %-32s "+messages.UI.StatsRatingFmt, title, mr.Rating))
 		}
 	}
 
 	if len(s.ByMonth) > 0 {
-		lines = append(lines, "", labelStyle.Render("Visionnages par mois"))
+		lines = append(lines, "", labelStyle.Render(messages.UI.StatsByMonth))
 		lines = append(lines, asciiHistogram(s.ByMonth))
 	}
 
 	if s.TotalMovies == 0 {
-		lines = append(lines, "", subtleStyle.Render("Ajoute des films pour voir tes statistiques."))
+		lines = append(lines, "", subtleStyle.Render(messages.UI.StatsEmptyHint))
 	}
 
 	return panelStyle.Render(strings.Join(lines, "\n"))
@@ -297,100 +312,82 @@ func (m Model) statsView() string {
 
 func (m Model) settingsView() string {
 	message := m.message
+	kind := m.messageKind
 	if message == "" {
-		message = "Modifie les champs puis valide avec Entrée."
-	}
-
-	offline := "désactivé"
-	if m.state.Config.OfflineMode {
-		offline = "activé"
+		message = messages.UI.SettingsHint
+		kind = messages.KindInfo
 	}
 
 	lines := []string{
-		activeStyle.Render("Paramètres"),
+		activeStyle.Render(messages.UI.SettingsTitle),
 		"",
-		label("Thème", m.settingsFocus == 0),
+		label(messages.UI.ThemeLabel, m.settingsFocus == 0),
 		m.themeInput.View(),
 		"",
-		label("URL serveur", m.settingsFocus == 1),
+		label(messages.UI.ServerURLLabel, m.settingsFocus == 1),
 		m.serverURLInput.View(),
 		"",
-		subtleStyle.Render("Mode hors ligne : " + offline + " (o pour basculer)"),
+		subtleStyle.Render(fmt.Sprintf(messages.UI.OfflineToggleHint, messages.OfflineModeLabel(m.state.Config.OfflineMode))),
 	}
 	if m.state.Session.Authenticated {
-		lines = append(lines, subtleStyle.Render("Connecté : "+m.state.Session.Email+" (d pour déconnecter)"))
+		lines = append(lines, subtleStyle.Render(fmt.Sprintf(messages.UI.ConnectedHintFmt, m.state.Session.Email)))
 	}
-	lines = append(lines, "", statusLine(message))
+	lines = append(lines, "", statusLine(kind, message))
 	return panelStyle.Render(strings.Join(lines, "\n"))
 }
 
 func (m Model) loginView() string {
 	message := m.message
+	kind := m.messageKind
 	if message == "" {
-		message = "Connecte-toi au serveur MovieTracker."
+		message = messages.UI.LoginHint
+		kind = messages.KindInfo
 	}
 	if m.authLoading {
-		message = "Connexion en cours..."
+		message = messages.UI.LoginLoading
+		kind = messages.KindInfo
 	}
 
 	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render("Connexion"),
+		activeStyle.Render(messages.UI.LoginTitle),
 		"",
-		label("Email", m.loginFocus == 0),
+		label(messages.UI.EmailLabel, m.loginFocus == 0),
 		m.emailInput.View(),
 		"",
-		label("Mot de passe", m.loginFocus == 1),
+		label(messages.UI.PasswordLabel, m.loginFocus == 1),
 		m.passwordInput.View(),
 		"",
-		subtleStyle.Render("Pas de compte ? Appuie sur r pour t'inscrire."),
+		subtleStyle.Render(messages.UI.LoginNoAccount),
 		"",
-		statusLine(message),
+		statusLine(kind, message),
 	}, "\n"))
 }
 
 func (m Model) registerView() string {
 	message := m.message
+	kind := m.messageKind
 	if message == "" {
-		message = "Crée un compte sur le serveur MovieTracker."
+		message = messages.UI.RegisterHint
+		kind = messages.KindInfo
 	}
 	if m.authLoading {
-		message = "Inscription en cours..."
+		message = messages.UI.RegisterLoading
+		kind = messages.KindInfo
 	}
 
 	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render("Inscription"),
+		activeStyle.Render(messages.UI.RegisterTitle),
 		"",
-		label("Email", m.registerFocus == 0),
+		label(messages.UI.EmailLabel, m.registerFocus == 0),
 		m.emailInput.View(),
 		"",
-		label("Mot de passe", m.registerFocus == 1),
+		label(messages.UI.PasswordLabel, m.registerFocus == 1),
 		m.passwordInput.View(),
 		"",
-		label("Confirmation", m.registerFocus == 2),
+		label(messages.UI.ConfirmLabel, m.registerFocus == 2),
 		m.confirmPasswordInput.View(),
 		"",
-		statusLine(message),
-	}, "\n"))
-}
-
-func (m Model) helpView() string {
-	return panelStyle.Render(strings.Join([]string{
-		activeStyle.Render("Aide"),
-		"",
-		"Entrée      sélectionner, ajouter ou enregistrer",
-		"↑/↓         naviguer dans les listes",
-		"a           ajouter un film depuis la liste",
-		"d           supprimer le film sélectionné",
-		"Tab         changer de champ",
-		"w           marquer vu aujourd'hui",
-		"u           marquer non vu",
-		"S           synchroniser",
-		"Esc ou m    revenir en arrière",
-		"s           paramètres",
-		"l           connexion",
-		"r           inscription (écran connexion)",
-		"? ou h      aide",
-		"q           quitter",
+		statusLine(kind, message),
 	}, "\n"))
 }
 
@@ -429,18 +426,16 @@ func label(text string, active bool) string {
 	return labelStyle.Render(text)
 }
 
-func statusLine(message string) string {
+func statusLine(kind messages.Kind, message string) string {
 	if message == "" {
 		return ""
 	}
-
-	lower := strings.ToLower(message)
-	if strings.Contains(lower, "invalide") ||
-		strings.Contains(lower, "impossible") ||
-		strings.Contains(lower, "obligatoire") ||
-		strings.Contains(lower, "ne peut pas") ||
-		strings.Contains(lower, "saisis") {
+	switch kind {
+	case messages.KindError:
 		return errorStyle.Render(message)
+	case messages.KindSuccess:
+		return activeStyle.Render(message)
+	default:
+		return subtleStyle.Render(message)
 	}
-	return activeStyle.Render(message)
 }

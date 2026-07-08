@@ -23,6 +23,8 @@ func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
 	rl := RateLimiter(rate.Limit(5), 20)
 	auth := func(h http.Handler) http.Handler { return rl(JWTMiddleware(jwtSecret, h)) }
 
+	mux.HandleFunc("GET /health", healthHandler)
+
 	// — Public auth routes —
 	ah := &authHandler{auth: svcs.Auth}
 	mux.Handle("POST /api/register", rl(http.HandlerFunc(ah.register)))

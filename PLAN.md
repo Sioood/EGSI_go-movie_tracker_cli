@@ -302,19 +302,19 @@ make run-server
 
 ## Phase 10 — Robustesse et polish
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P1 | **Difficulté** : Moyen | **Temps** : ~3 jours
 
 #### Tâches
 
-- [ ] Messages TUI FR centralisés
-- [ ] Écran aide complet
-- [ ] Tests E2E README
-- [ ] docker-compose, golangci-lint
+- [x] Messages TUI FR centralisés
+- [x] Écran aide complet
+- [x] Tests E2E README
+- [x] docker-compose, golangci-lint
 
 #### Livrables
 
-- [ ] App production-ready
+- [x] App production-ready
 
 ---
 
@@ -349,7 +349,7 @@ make run-server
 | 7 | API REST | P0 | [x] | 1, 6 |
 | 8 | Login TUI | P0 | [x] | 2, 6 |
 | 9 | Sync hybride | P0 | [x] | 7, 8 |
-| 10 | Polish | P1 | [ ] | 9 |
+| 10 | Polish | P1 | [x] | 9 |
 | A | TMDB | P2 | [ ] | 7, 3 |
 | B | Export | P3 | [ ] | 1 |
 | C | Sync avancée | P3 | [ ] | 9 |
@@ -358,4 +358,4 @@ make run-server
 
 ## Prochaine étape
 
-**Phase 10** — Robustesse et polish : messages TUI centralisés, écran aide complet, tests E2E, docker-compose.
+**Bonus A** — TMDB : recherche externe, cache métadonnées.

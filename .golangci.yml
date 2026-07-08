@@ -1,0 +1,31 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - bodyclose
+    - misspell
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+      - shadow
+
+issues:
+  exclude-dirs:
+    - bin
+    - data
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+    - path: internal/tui/
+      linters:
+        - misspell

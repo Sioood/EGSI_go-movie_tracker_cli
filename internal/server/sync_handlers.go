@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -99,10 +98,4 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 		"synced_watch_entries": syncedEntries,
 		"deleted_movies":       deleted,
 	})
-}
-
-// syncUpsertMovie is kept for backward compatibility in tests if referenced.
-func syncUpsertMovie(ctx context.Context, svc *service.MovieService, ownerID string, m domain.Movie) (domain.Movie, error) {
-	saved, _, err := svc.SyncUpsertMovie(ctx, ownerID, m)
-	return saved, err
 }

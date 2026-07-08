@@ -15,6 +15,7 @@ import (
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/tui/messages"
 )
 
 type MovieClient interface {
@@ -105,19 +106,34 @@ type Model struct {
 	sort                 domain.MovieSort
 	stats                domain.Stats
 	message              string
+	messageKind          messages.Kind
 	authLoading          bool
+}
+
+func (m *Model) setMessage(kind messages.Kind, text string) {
+	m.message = text
+	m.messageKind = kind
+}
+
+func (m *Model) setError(err error) {
+	m.setMessage(messages.KindError, messages.UserMessage(err))
+}
+
+func (m *Model) clearMessage() {
+	m.message = ""
+	m.messageKind = messages.KindInfo
 }
 
 func New(opts Options) Model {
 	movieService := opts.MovieService
 
 	menu := list.New(mainMenuItems(), list.NewDefaultDelegate(), 0, 0)
-	menu.Title = "Menu principal"
+	menu.Title = messages.UI.MenuTitle
 	menu.SetShowStatusBar(false)
 	menu.SetFilteringEnabled(false)
 
 	movies := list.New(nil, list.NewDefaultDelegate(), 0, 0)
-	movies.Title = "Films"
+	movies.Title = messages.UI.MoviesTitle
 	movies.SetShowStatusBar(false)
 	movies.SetFilteringEnabled(false)
 
@@ -126,24 +142,24 @@ func New(opts Options) Model {
 		state = defaultState()
 	}
 
-	themeInput := newTextInput("midnight", 32)
+	themeInput := newTextInput(messages.UI.ThemePlaceholder, 32)
 	themeInput.SetValue(state.Config.Theme)
 
-	serverURLInput := newTextInput("http://localhost:8080", 120)
+	serverURLInput := newTextInput(messages.UI.ServerURLPlaceholder, 120)
 	serverURLInput.SetValue(state.Config.ServerURL)
 
-	emailInput := newTextInput("vous@example.com", 80)
-	passwordInput := newPasswordInput("mot de passe", 64)
-	confirmPasswordInput := newPasswordInput("confirmer", 64)
+	emailInput := newTextInput(messages.UI.EmailPlaceholder, 80)
+	passwordInput := newPasswordInput(messages.UI.PasswordPlaceholder, 64)
+	confirmPasswordInput := newPasswordInput(messages.UI.ConfirmPlaceholder, 64)
 
-	titleInput := newTextInput("Titre du film", 120)
-	yearInput := newTextInput("2026", 4)
-	searchInput := newTextInput("Rechercher un titre...", 80)
-	ratingInput := newTextInput("8.5", 4)
-	watchedAtInput := newTextInput("YYYY-MM-DD", 10)
+	titleInput := newTextInput(messages.UI.TitlePlaceholder, 120)
+	yearInput := newTextInput(messages.UI.YearPlaceholder, 4)
+	searchInput := newTextInput(messages.UI.SearchPlaceholder, 80)
+	ratingInput := newTextInput(messages.UI.RatingPlaceholder, 4)
+	watchedAtInput := newTextInput(messages.UI.DatePlaceholder, 10)
 
 	reviewInput := textarea.New()
-	reviewInput.Placeholder = "Votre critique..."
+	reviewInput.Placeholder = messages.UI.ReviewPlaceholder
 	reviewInput.SetWidth(64)
 	reviewInput.SetHeight(6)
 
@@ -227,7 +243,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) handleAuthResult(msg authResultMsg) (tea.Model, tea.Cmd) {
 	m.authLoading = false
 	if msg.err != nil {
-		m.message = authErrorMessage(msg.err)
+		m.setError(msg.err)
 		return m, nil
 	}
 
@@ -242,11 +258,11 @@ func (m Model) handleAuthResult(msg authResultMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.action {
 	case "login":
-		m.message = "Connecté en tant que " + msg.session.Email
+		m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.ConnectedAsFmt, msg.session.Email))
 	case "register":
-		m.message = "Compte créé pour " + msg.session.Email
+		m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.AccountCreatedFmt, msg.session.Email))
 	default:
-		m.message = "Session restaurée pour " + msg.session.Email
+		m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.SessionRestoredFmt, msg.session.Email))
 	}
 	m.goTo(RouteMainMenu)
 	return m.startSync()
@@ -376,19 +392,19 @@ func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 	case "f":
 		m.filter = nextMovieFilter(m.filter)
-		m.message = "Filtre : " + filterLabel(m.filter)
+		m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.FilterFmt, messages.FilterLabel(m.filter)))
 		m.refreshMovies()
 		return m, nil
 	case "t":
 		m.sort = nextMovieSort(m.sort)
-		m.message = "Tri : " + sortLabel(m.sort)
+		m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.SortFmt, messages.SortLabel(m.sort)))
 		m.refreshMovies()
 		return m, nil
 	case "c":
 		m.searchInput.SetValue("")
 		m.filter = domain.MovieFilterAll
 		m.sort = domain.MovieSortTitle
-		m.message = "Recherche et filtres réinitialisés."
+		m.setMessage(messages.KindInfo, messages.UI.FiltersReset)
 		m.refreshMovies()
 		return m, nil
 	case "a":
@@ -404,10 +420,10 @@ func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		if item, ok := m.movies.SelectedItem().(movieItem); ok {
 			if err := m.service.DeleteMovie(context.Background(), item.movie.ID); err != nil {
-				m.message = "Suppression impossible : " + err.Error()
+				m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.DeleteFailedFmt, messages.UserMessage(err)))
 				return m, nil
 			}
-			m.message = "Film supprimé."
+			m.setMessage(messages.KindSuccess, messages.UI.MovieDeleted)
 			m.refreshMovies()
 		}
 		return m, nil
@@ -427,10 +443,10 @@ func (m Model) updateMovieForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		movie, err := m.createMovieFromForm()
 		if err != nil {
-			m.message = err.Error()
+			m.setError(err)
 			return m, nil
 		}
-		m.message = "Film ajouté : " + movie.Title
+		m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.MovieAddedFmt, movie.Title))
 		m.refreshMovies()
 		m.openMovieDetail(movie)
 		m.goTo(RouteMovieDetail)
@@ -454,7 +470,11 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "o":
 		m.state.Config.OfflineMode = !m.state.Config.OfflineMode
-		m.message = fmt.Sprintf("Mode hors ligne : %t", m.state.Config.OfflineMode)
+		label := messages.UI.OfflineDisabled
+		if m.state.Config.OfflineMode {
+			label = messages.UI.OfflineEnabled
+		}
+		m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.OfflineToggleHint, label))
 		if m.saveConfig != nil {
 			_ = m.saveConfig(m.state.Config)
 		}
@@ -465,7 +485,7 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.clearSession != nil {
 				_ = m.clearSession()
 			}
-			m.message = "Déconnecté."
+			m.setMessage(messages.KindSuccess, messages.UI.LoggedOut)
 		}
 		return m, nil
 	case "enter", "ctrl+s":
@@ -485,12 +505,12 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) saveSettings() (tea.Model, tea.Cmd) {
 	theme := strings.TrimSpace(m.themeInput.Value())
 	if theme == "" {
-		m.message = "Le thème ne peut pas être vide."
+		m.setMessage(messages.KindError, messages.UI.ThemeEmpty)
 		return m, nil
 	}
 	serverURL := strings.TrimSpace(m.serverURLInput.Value())
 	if serverURL == "" {
-		m.message = "L'URL du serveur ne peut pas être vide."
+		m.setMessage(messages.KindError, messages.UI.ServerURLEmpty)
 		return m, nil
 	}
 
@@ -498,11 +518,11 @@ func (m Model) saveSettings() (tea.Model, tea.Cmd) {
 	m.state.Config.ServerURL = serverURL
 	if m.saveConfig != nil {
 		if err := m.saveConfig(m.state.Config); err != nil {
-			m.message = "Sauvegarde impossible : " + err.Error()
+			m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.SaveFailedFmt, messages.UserMessage(err)))
 			return m, nil
 		}
 	}
-	m.message = "Paramètres enregistrés."
+	m.setMessage(messages.KindSuccess, messages.UI.SettingsSaved)
 	return m, nil
 }
 
@@ -528,15 +548,15 @@ func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		email := strings.TrimSpace(m.emailInput.Value())
 		password := m.passwordInput.Value()
 		if err := validateAuthInput(email, password); err != nil {
-			m.message = err.Error()
+			m.setError(err)
 			return m, nil
 		}
 		if m.auth == nil {
-			m.message = "Client d'authentification indisponible."
+			m.setMessage(messages.KindError, messages.UI.AuthClientUnavailable)
 			return m, nil
 		}
 		m.authLoading = true
-		m.message = "Connexion en cours..."
+		m.setMessage(messages.KindInfo, messages.UI.LoginLoading)
 		return m, loginCmd(m.auth, email, password)
 	}
 
@@ -569,19 +589,19 @@ func (m Model) updateRegister(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		password := m.passwordInput.Value()
 		confirm := m.confirmPasswordInput.Value()
 		if err := validateAuthInput(email, password); err != nil {
-			m.message = err.Error()
+			m.setError(err)
 			return m, nil
 		}
 		if password != confirm {
-			m.message = "Les mots de passe ne correspondent pas."
+			m.setMessage(messages.KindError, messages.UI.PasswordMismatch)
 			return m, nil
 		}
 		if m.auth == nil {
-			m.message = "Client d'authentification indisponible."
+			m.setMessage(messages.KindError, messages.UI.AuthClientUnavailable)
 			return m, nil
 		}
 		m.authLoading = true
-		m.message = "Inscription en cours..."
+		m.setMessage(messages.KindInfo, messages.UI.RegisterLoading)
 		return m, registerCmd(m.auth, email, password)
 	}
 
@@ -653,21 +673,6 @@ func validateAuthInput(email, password string) error {
 	return nil
 }
 
-func authErrorMessage(err error) string {
-	switch {
-	case errors.Is(err, apperrors.ErrInvalidCredentials):
-		return "Identifiants invalides."
-	case errors.Is(err, apperrors.ErrEmailAlreadyExists):
-		return "Email déjà utilisé."
-	case errors.Is(err, apperrors.ErrValidation):
-		return "Données invalides : " + err.Error()
-	case errors.Is(err, apperrors.ErrNetwork):
-		return "Erreur réseau : " + err.Error()
-	default:
-		return "Authentification impossible : " + err.Error()
-	}
-}
-
 func (m Model) updateMovieDetail(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "tab", "shift+tab":
@@ -678,19 +683,19 @@ func (m Model) updateMovieDetail(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		today := time.Now().Format("2006-01-02")
 		m.watchedAtInput.SetValue(today)
 		m.selectedEntry.Watched = true
-		m.message = "Film marqué comme vu aujourd'hui."
+		m.setMessage(messages.KindSuccess, messages.UI.WatchedToday)
 		return m, nil
 	case "u":
 		m.watchedAtInput.SetValue("")
 		m.selectedEntry.Watched = false
-		m.message = "Film marqué comme non vu."
+		m.setMessage(messages.KindSuccess, messages.UI.Unwatched)
 		return m, nil
 	case "enter":
 		if err := m.saveMovieDetail(); err != nil {
-			m.message = err.Error()
+			m.setError(err)
 			return m, nil
 		}
-		m.message = "Détail enregistré."
+		m.setMessage(messages.KindSuccess, messages.UI.DetailSaved)
 		m.refreshMovies()
 		return m, nil
 	}
@@ -864,7 +869,7 @@ func (m *Model) refreshMovies() {
 		Sort:   m.sort,
 	})
 	if err != nil {
-		m.message = "Chargement impossible : " + err.Error()
+		m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.LoadFailedFmt, messages.UserMessage(err)))
 		return
 	}
 
@@ -875,7 +880,7 @@ func (m *Model) refreshMovies() {
 	for _, movie := range movies {
 		entry, err := m.service.GetWatchEntry(context.Background(), movie.ID)
 		if err != nil && !errors.Is(err, apperrors.ErrWatchEntryNotFound) {
-			m.message = "Statut incomplet : " + err.Error()
+			m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.StatusIncompleteFmt, messages.UserMessage(err)))
 		}
 		if err == nil {
 			m.watchEntries[movie.ID] = entry
@@ -892,7 +897,7 @@ func (m *Model) refreshStats() {
 	}
 	stats, err := m.service.GetStats(context.Background(), m.currentUserID())
 	if err != nil {
-		m.message = "Stats indisponibles : " + err.Error()
+		m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.StatsUnavailableFmt, messages.UserMessage(err)))
 		return
 	}
 	m.stats = stats
@@ -902,7 +907,7 @@ func (m *Model) prepareMovieForm() {
 	m.titleInput.SetValue("")
 	m.yearInput.SetValue("")
 	m.formFocus = 0
-	m.message = ""
+	m.clearMessage()
 }
 
 func (m *Model) focusMovieForm() {
@@ -916,7 +921,7 @@ func (m *Model) focusMovieForm() {
 
 func (m *Model) createMovieFromForm() (domain.Movie, error) {
 	if m.service == nil {
-		return domain.Movie{}, fmt.Errorf("service films indisponible")
+		return domain.Movie{}, errors.New(messages.UI.MovieServiceUnavailable)
 	}
 
 	year, err := parseOptionalYear(m.yearInput.Value())
@@ -951,7 +956,7 @@ func (m *Model) openMovieDetail(movie domain.Movie) {
 
 	m.reviewInput.SetValue(entry.Review)
 	m.detailFocus = 0
-	m.message = ""
+	m.clearMessage()
 }
 
 func (m *Model) focusMovieDetail() {
@@ -968,10 +973,10 @@ func (m *Model) focusMovieDetail() {
 
 func (m *Model) saveMovieDetail() error {
 	if m.service == nil {
-		return fmt.Errorf("service films indisponible")
+		return errors.New(messages.UI.MovieServiceUnavailable)
 	}
 	if m.selectedMovie.ID == "" {
-		return fmt.Errorf("aucun film sélectionné")
+		return errors.New(messages.UI.NoMovieSelected)
 	}
 
 	rating, err := parseOptionalRating(m.ratingInput.Value())
@@ -1013,7 +1018,7 @@ func mainMenuItems() []list.Item {
 
 func movieStatus(entry domain.WatchEntry, found bool) string {
 	if !found || !entry.Watched {
-		return "non vu"
+		return messages.UI.StatusUnwatched
 	}
 
 	parts := []string{"vu"}
@@ -1041,21 +1046,6 @@ func nextMovieFilter(filter domain.MovieFilter) domain.MovieFilter {
 	}
 }
 
-func filterLabel(filter domain.MovieFilter) string {
-	switch filter {
-	case domain.MovieFilterWatched:
-		return "vus"
-	case domain.MovieFilterUnwatched:
-		return "non vus"
-	case domain.MovieFilterRated:
-		return "notés"
-	case domain.MovieFilterUnrated:
-		return "sans note"
-	default:
-		return "tous"
-	}
-}
-
 func nextMovieSort(sort domain.MovieSort) domain.MovieSort {
 	switch sort {
 	case domain.MovieSortTitle:
@@ -1064,17 +1054,6 @@ func nextMovieSort(sort domain.MovieSort) domain.MovieSort {
 		return domain.MovieSortRating
 	default:
 		return domain.MovieSortTitle
-	}
-}
-
-func sortLabel(sort domain.MovieSort) string {
-	switch sort {
-	case domain.MovieSortDate:
-		return "date"
-	case domain.MovieSortRating:
-		return "note"
-	default:
-		return "titre"
 	}
 }
 

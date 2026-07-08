@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/movietracker/movie-tracker/internal/tui/messages"
 )
 
 const syncInterval = 30 * time.Second
@@ -91,7 +92,7 @@ func (m Model) handleSyncResult(msg syncResultMsg) (tea.Model, tea.Cmd) {
 	m.syncSyncing = false
 	if msg.err != nil {
 		m.syncStatus = SyncStatusError
-		m.syncError = msg.err.Error()
+		m.syncError = messages.UserMessage(msg.err)
 		if m.syncRunner != nil {
 			if count, err := m.syncRunner.PendingCount(context.Background()); err == nil {
 				m.pendingCount = count
@@ -112,7 +113,7 @@ func (m Model) handleSyncResult(msg syncResultMsg) (tea.Model, tea.Cmd) {
 	return m, m.scheduleSyncTick()
 }
 
-func (m Model) refreshPendingCount() {
+func (m *Model) refreshPendingCount() {
 	if m.syncRunner == nil {
 		return
 	}

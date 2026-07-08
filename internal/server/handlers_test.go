@@ -253,3 +253,19 @@ func TestMeWrongSecret(t *testing.T) {
 		t.Fatalf("want 401 for wrong-secret token, got %d", rr2.Code)
 	}
 }
+
+func TestHealthEndpoint(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	newTestRouter(t).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), `"status":"ok"`) {
+		t.Fatalf("unexpected body: %s", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"version":"1.0.0"`) {
+		t.Fatalf("unexpected body: %s", rr.Body.String())
+	}
+}
