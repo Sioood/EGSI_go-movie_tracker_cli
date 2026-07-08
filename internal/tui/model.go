@@ -14,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/service"
 )
 
 type MovieClient interface {
@@ -28,40 +29,78 @@ type MovieClient interface {
 	GetStats(ctx context.Context, userID string) (domain.Stats, error)
 }
 
-type Model struct {
-	route          Route
-	previous       Route
-	state          AppState
-	width          int
-	height         int
-	service        MovieClient
-	menu           list.Model
-	movies         list.Model
-	movieRecords   []domain.Movie
-	watchEntries   map[string]domain.WatchEntry
-	selectedMovie  domain.Movie
-	selectedEntry  domain.WatchEntry
-	themeInput     textinput.Model
-	emailInput     textinput.Model
-	titleInput     textinput.Model
-	yearInput      textinput.Model
-	searchInput    textinput.Model
-	ratingInput    textinput.Model
-	watchedAtInput textinput.Model
-	reviewInput    textarea.Model
-	formFocus      int
-	detailFocus    int
-	filter         domain.MovieFilter
-	sort           domain.MovieSort
-	stats          domain.Stats
-	message        string
+// AuthClient performs remote authentication (implemented by internal/client).
+type AuthClient interface {
+	Register(ctx context.Context, email, password string) (service.TokenPair, error)
+	Login(ctx context.Context, email, password string) (service.TokenPair, error)
+	Refresh(ctx context.Context, refreshToken string) (service.TokenPair, error)
+	Me(ctx context.Context, accessToken string) (UserInfo, error)
 }
 
-func New(services ...MovieClient) Model {
-	var movieService MovieClient
-	if len(services) > 0 {
-		movieService = services[0]
-	}
+// UserInfo is the authenticated user profile from the server.
+type UserInfo struct {
+	ID    string
+	Email string
+}
+
+// Options configures the TUI model at startup.
+type Options struct {
+	MovieService MovieClient
+	Auth         AuthClient
+	State        AppState
+	SaveConfig   func(Config) error
+	SaveSession  func(SessionState) error
+	ClearSession func() error
+}
+
+type authResultMsg struct {
+	session SessionState
+	err     error
+	action  string
+}
+
+type Model struct {
+	route                Route
+	previous             Route
+	state                AppState
+	width                int
+	height               int
+	service              MovieClient
+	auth                 AuthClient
+	saveConfig           func(Config) error
+	saveSession          func(SessionState) error
+	clearSession         func() error
+	menu                 list.Model
+	movies               list.Model
+	movieRecords         []domain.Movie
+	watchEntries         map[string]domain.WatchEntry
+	selectedMovie        domain.Movie
+	selectedEntry        domain.WatchEntry
+	themeInput           textinput.Model
+	serverURLInput       textinput.Model
+	emailInput           textinput.Model
+	passwordInput        textinput.Model
+	confirmPasswordInput textinput.Model
+	titleInput           textinput.Model
+	yearInput            textinput.Model
+	searchInput          textinput.Model
+	ratingInput          textinput.Model
+	watchedAtInput       textinput.Model
+	reviewInput          textarea.Model
+	formFocus            int
+	detailFocus          int
+	loginFocus           int
+	registerFocus        int
+	settingsFocus        int
+	filter               domain.MovieFilter
+	sort                 domain.MovieSort
+	stats                domain.Stats
+	message              string
+	authLoading          bool
+}
+
+func New(opts Options) Model {
+	movieService := opts.MovieService
 
 	menu := list.New(mainMenuItems(), list.NewDefaultDelegate(), 0, 0)
 	menu.Title = "Menu principal"
@@ -73,34 +112,26 @@ func New(services ...MovieClient) Model {
 	movies.SetShowStatusBar(false)
 	movies.SetFilteringEnabled(false)
 
-	themeInput := textinput.New()
-	themeInput.Placeholder = "midnight"
-	themeInput.SetValue("midnight")
-	themeInput.CharLimit = 32
+	state := opts.State
+	if state.Config.Theme == "" {
+		state = defaultState()
+	}
 
-	emailInput := textinput.New()
-	emailInput.Placeholder = "vous@example.com"
-	emailInput.CharLimit = 80
+	themeInput := newTextInput("midnight", 32)
+	themeInput.SetValue(state.Config.Theme)
 
-	titleInput := textinput.New()
-	titleInput.Placeholder = "Titre du film"
-	titleInput.CharLimit = 120
+	serverURLInput := newTextInput("http://localhost:8080", 120)
+	serverURLInput.SetValue(state.Config.ServerURL)
 
-	yearInput := textinput.New()
-	yearInput.Placeholder = "2026"
-	yearInput.CharLimit = 4
+	emailInput := newTextInput("vous@example.com", 80)
+	passwordInput := newPasswordInput("mot de passe", 64)
+	confirmPasswordInput := newPasswordInput("confirmer", 64)
 
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Rechercher un titre..."
-	searchInput.CharLimit = 80
-
-	ratingInput := textinput.New()
-	ratingInput.Placeholder = "8.5"
-	ratingInput.CharLimit = 4
-
-	watchedAtInput := textinput.New()
-	watchedAtInput.Placeholder = "YYYY-MM-DD"
-	watchedAtInput.CharLimit = 10
+	titleInput := newTextInput("Titre du film", 120)
+	yearInput := newTextInput("2026", 4)
+	searchInput := newTextInput("Rechercher un titre...", 80)
+	ratingInput := newTextInput("8.5", 4)
+	watchedAtInput := newTextInput("YYYY-MM-DD", 10)
 
 	reviewInput := textarea.New()
 	reviewInput.Placeholder = "Votre critique..."
@@ -108,25 +139,46 @@ func New(services ...MovieClient) Model {
 	reviewInput.SetHeight(6)
 
 	model := Model{
-		route:          RouteSplash,
-		state:          defaultState(),
-		service:        movieService,
-		menu:           menu,
-		movies:         movies,
-		watchEntries:   make(map[string]domain.WatchEntry),
-		themeInput:     themeInput,
-		emailInput:     emailInput,
-		titleInput:     titleInput,
-		yearInput:      yearInput,
-		searchInput:    searchInput,
-		ratingInput:    ratingInput,
-		watchedAtInput: watchedAtInput,
-		reviewInput:    reviewInput,
-		filter:         domain.MovieFilterAll,
-		sort:           domain.MovieSortTitle,
+		route:                RouteSplash,
+		state:                state,
+		service:              movieService,
+		auth:                 opts.Auth,
+		saveConfig:           opts.SaveConfig,
+		saveSession:          opts.SaveSession,
+		clearSession:         opts.ClearSession,
+		menu:                 menu,
+		movies:               movies,
+		watchEntries:         make(map[string]domain.WatchEntry),
+		themeInput:           themeInput,
+		serverURLInput:       serverURLInput,
+		emailInput:           emailInput,
+		passwordInput:        passwordInput,
+		confirmPasswordInput: confirmPasswordInput,
+		titleInput:           titleInput,
+		yearInput:            yearInput,
+		searchInput:          searchInput,
+		ratingInput:          ratingInput,
+		watchedAtInput:       watchedAtInput,
+		reviewInput:          reviewInput,
+		filter:               domain.MovieFilterAll,
+		sort:                 domain.MovieSortTitle,
 	}
 	model.refreshMovies()
 	return model
+}
+
+func newTextInput(placeholder string, limit int) textinput.Model {
+	input := textinput.New()
+	input.Placeholder = placeholder
+	input.CharLimit = limit
+	return input
+}
+
+func newPasswordInput(placeholder string, limit int) textinput.Model {
+	input := newTextInput(placeholder, limit)
+	input.EchoMode = textinput.EchoPassword
+	input.EchoCharacter = '•'
+	return input
 }
 
 func (m Model) Init() tea.Cmd {
@@ -140,11 +192,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.resizeLists()
 		return m, nil
+	case authResultMsg:
+		return m.handleAuthResult(msg)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
 
 	return m.updateActiveBubble(msg)
+}
+
+func (m Model) handleAuthResult(msg authResultMsg) (tea.Model, tea.Cmd) {
+	m.authLoading = false
+	if msg.err != nil {
+		m.message = authErrorMessage(msg.err)
+		return m, nil
+	}
+
+	m.state.Session = msg.session
+	m.state.Config.OfflineMode = false
+	if m.saveSession != nil {
+		_ = m.saveSession(msg.session)
+	}
+	if m.saveConfig != nil {
+		_ = m.saveConfig(m.state.Config)
+	}
+
+	switch msg.action {
+	case "login":
+		m.message = "Connecté en tant que " + msg.session.Email
+	case "register":
+		m.message = "Compte créé pour " + msg.session.Email
+	default:
+		m.message = "Session restaurée pour " + msg.session.Email
+	}
+	m.goTo(RouteMainMenu)
+	return m, nil
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -160,6 +242,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
+		if m.route == RouteRegister {
+			m.goTo(RouteLogin)
+			return m, nil
+		}
 		if m.route == RouteMovieForm || m.route == RouteMovieDetail {
 			m.goTo(RouteMovieList)
 			return m, nil
@@ -177,6 +263,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateSettings(msg)
 	case RouteLogin:
 		return m.updateLogin(msg)
+	case RouteRegister:
+		return m.updateRegister(msg)
 	case RouteMovieDetail:
 		if m.reviewInput.Focused() && msg.String() != "tab" && msg.String() != "shift+tab" && msg.String() != "enter" {
 			var cmd tea.Cmd
@@ -193,7 +281,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.goTo(RouteHelp)
 		return m, nil
 	case "h":
-		if m.route != RouteSplash && m.route != RouteLogin && m.route != RouteSettings {
+		if m.route != RouteSplash && m.route != RouteLogin && m.route != RouteRegister && m.route != RouteSettings {
 			m.goTo(RouteHelp)
 			return m, nil
 		}
@@ -201,12 +289,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.goTo(RouteMainMenu)
 		return m, nil
 	case "s":
-		if m.route != RouteSplash && m.route != RouteSettings && m.route != RouteLogin {
+		if m.route != RouteSplash && m.route != RouteSettings && m.route != RouteLogin && m.route != RouteRegister {
 			m.goTo(RouteSettings)
 			return m, nil
 		}
 	case "l":
-		if m.route != RouteSplash && m.route != RouteLogin && m.route != RouteSettings {
+		if m.route != RouteSplash && m.route != RouteLogin && m.route != RouteRegister && m.route != RouteSettings {
 			m.goTo(RouteLogin)
 			return m, nil
 		}
@@ -331,38 +419,221 @@ func (m Model) updateMovieForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "enter":
-		value := strings.TrimSpace(m.themeInput.Value())
-		if value == "" {
-			m.message = "Le thème ne peut pas être vide."
-			return m, nil
-		}
-		m.state.Config.Theme = value
-		m.message = fmt.Sprintf("Thème actif : %s", value)
+	case "tab", "shift+tab":
+		m.settingsFocus = (m.settingsFocus + 1) % 2
+		m.focusSettings()
 		return m, nil
+	case "o":
+		m.state.Config.OfflineMode = !m.state.Config.OfflineMode
+		m.message = fmt.Sprintf("Mode hors ligne : %t", m.state.Config.OfflineMode)
+		return m, nil
+	case "d":
+		if m.state.Session.Authenticated {
+			m.state.Session = SessionState{}
+			if m.clearSession != nil {
+				_ = m.clearSession()
+			}
+			m.message = "Déconnecté."
+		}
+		return m, nil
+	case "enter", "ctrl+s":
+		return m.saveSettings()
 	}
 
 	var cmd tea.Cmd
-	m.themeInput, cmd = m.themeInput.Update(msg)
+	switch m.settingsFocus {
+	case 0:
+		m.themeInput, cmd = m.themeInput.Update(msg)
+	default:
+		m.serverURLInput, cmd = m.serverURLInput.Update(msg)
+	}
 	return m, cmd
 }
 
-func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
-		email := strings.TrimSpace(m.emailInput.Value())
-		if email == "" {
-			m.message = "Saisis un email pour simuler la connexion."
-			return m, nil
-		}
-		m.state.User.Email = email
-		m.message = "Session locale prête pour " + email
+func (m Model) saveSettings() (tea.Model, tea.Cmd) {
+	theme := strings.TrimSpace(m.themeInput.Value())
+	if theme == "" {
+		m.message = "Le thème ne peut pas être vide."
+		return m, nil
+	}
+	serverURL := strings.TrimSpace(m.serverURLInput.Value())
+	if serverURL == "" {
+		m.message = "L'URL du serveur ne peut pas être vide."
 		return m, nil
 	}
 
+	m.state.Config.Theme = theme
+	m.state.Config.ServerURL = serverURL
+	if m.saveConfig != nil {
+		if err := m.saveConfig(m.state.Config); err != nil {
+			m.message = "Sauvegarde impossible : " + err.Error()
+			return m, nil
+		}
+	}
+	m.message = "Paramètres enregistrés."
+	return m, nil
+}
+
+func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.authLoading {
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "tab", "shift+tab":
+		m.loginFocus = (m.loginFocus + 1) % 2
+		m.focusLogin()
+		return m, nil
+	case "r":
+		m.goTo(RouteRegister)
+		return m, nil
+	case "enter":
+		if m.loginFocus < 1 {
+			m.loginFocus++
+			m.focusLogin()
+			return m, nil
+		}
+		email := strings.TrimSpace(m.emailInput.Value())
+		password := m.passwordInput.Value()
+		if err := validateAuthInput(email, password); err != nil {
+			m.message = err.Error()
+			return m, nil
+		}
+		if m.auth == nil {
+			m.message = "Client d'authentification indisponible."
+			return m, nil
+		}
+		m.authLoading = true
+		m.message = "Connexion en cours..."
+		return m, loginCmd(m.auth, email, password)
+	}
+
 	var cmd tea.Cmd
-	m.emailInput, cmd = m.emailInput.Update(msg)
+	if m.loginFocus == 0 {
+		m.emailInput, cmd = m.emailInput.Update(msg)
+	} else {
+		m.passwordInput, cmd = m.passwordInput.Update(msg)
+	}
 	return m, cmd
+}
+
+func (m Model) updateRegister(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.authLoading {
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "tab", "shift+tab":
+		m.registerFocus = (m.registerFocus + 1) % 3
+		m.focusRegister()
+		return m, nil
+	case "enter":
+		if m.registerFocus < 2 {
+			m.registerFocus++
+			m.focusRegister()
+			return m, nil
+		}
+		email := strings.TrimSpace(m.emailInput.Value())
+		password := m.passwordInput.Value()
+		confirm := m.confirmPasswordInput.Value()
+		if err := validateAuthInput(email, password); err != nil {
+			m.message = err.Error()
+			return m, nil
+		}
+		if password != confirm {
+			m.message = "Les mots de passe ne correspondent pas."
+			return m, nil
+		}
+		if m.auth == nil {
+			m.message = "Client d'authentification indisponible."
+			return m, nil
+		}
+		m.authLoading = true
+		m.message = "Inscription en cours..."
+		return m, registerCmd(m.auth, email, password)
+	}
+
+	var cmd tea.Cmd
+	switch m.registerFocus {
+	case 0:
+		m.emailInput, cmd = m.emailInput.Update(msg)
+	case 1:
+		m.passwordInput, cmd = m.passwordInput.Update(msg)
+	default:
+		m.confirmPasswordInput, cmd = m.confirmPasswordInput.Update(msg)
+	}
+	return m, cmd
+}
+
+func loginCmd(auth AuthClient, email, password string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		pair, err := auth.Login(ctx, email, password)
+		if err != nil {
+			return authResultMsg{err: err, action: "login"}
+		}
+		info, err := auth.Me(ctx, pair.AccessToken)
+		if err != nil {
+			return authResultMsg{err: err, action: "login"}
+		}
+		return authResultMsg{
+			session: sessionFromTokens(pair, info),
+			action:  "login",
+		}
+	}
+}
+
+func registerCmd(auth AuthClient, email, password string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		pair, err := auth.Register(ctx, email, password)
+		if err != nil {
+			return authResultMsg{err: err, action: "register"}
+		}
+		info, err := auth.Me(ctx, pair.AccessToken)
+		if err != nil {
+			return authResultMsg{err: err, action: "register"}
+		}
+		return authResultMsg{
+			session: sessionFromTokens(pair, info),
+			action:  "register",
+		}
+	}
+}
+
+func sessionFromTokens(pair service.TokenPair, info UserInfo) SessionState {
+	return SessionState{
+		AccessToken:   pair.AccessToken,
+		RefreshToken:  pair.RefreshToken,
+		ServerUserID:  info.ID,
+		Email:         info.Email,
+		Authenticated: true,
+	}
+}
+
+func validateAuthInput(email, password string) error {
+	if strings.TrimSpace(email) == "" {
+		return fmt.Errorf("l'email est requis")
+	}
+	if len(password) < 8 {
+		return fmt.Errorf("le mot de passe doit contenir au moins 8 caractères")
+	}
+	return nil
+}
+
+func authErrorMessage(err error) string {
+	switch {
+	case errors.Is(err, apperrors.ErrInvalidCredentials):
+		return "Identifiants invalides."
+	case errors.Is(err, apperrors.ErrEmailAlreadyExists):
+		return "Email déjà utilisé."
+	case errors.Is(err, apperrors.ErrValidation):
+		return "Données invalides : " + err.Error()
+	case errors.Is(err, apperrors.ErrNetwork):
+		return "Erreur réseau : " + err.Error()
+	default:
+		return "Authentification impossible : " + err.Error()
+	}
 }
 
 func (m Model) updateMovieDetail(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -416,11 +687,30 @@ func (m Model) updateActiveBubble(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case RouteSettings:
 		var cmd tea.Cmd
-		m.themeInput, cmd = m.themeInput.Update(msg)
+		if m.settingsFocus == 0 {
+			m.themeInput, cmd = m.themeInput.Update(msg)
+		} else {
+			m.serverURLInput, cmd = m.serverURLInput.Update(msg)
+		}
 		return m, cmd
 	case RouteLogin:
 		var cmd tea.Cmd
-		m.emailInput, cmd = m.emailInput.Update(msg)
+		if m.loginFocus == 0 {
+			m.emailInput, cmd = m.emailInput.Update(msg)
+		} else {
+			m.passwordInput, cmd = m.passwordInput.Update(msg)
+		}
+		return m, cmd
+	case RouteRegister:
+		var cmd tea.Cmd
+		switch m.registerFocus {
+		case 0:
+			m.emailInput, cmd = m.emailInput.Update(msg)
+		case 1:
+			m.passwordInput, cmd = m.passwordInput.Update(msg)
+		default:
+			m.confirmPasswordInput, cmd = m.confirmPasswordInput.Update(msg)
+		}
 		return m, cmd
 	case RouteMovieForm:
 		var cmd tea.Cmd
@@ -439,6 +729,7 @@ func (m *Model) goTo(route Route) {
 	m.previous = m.route
 	m.route = route
 	m.clearFocus()
+	m.authLoading = false
 
 	switch route {
 	case RouteMovieList:
@@ -446,9 +737,21 @@ func (m *Model) goTo(route Route) {
 	case RouteStats:
 		m.refreshStats()
 	case RouteSettings:
-		m.themeInput.Focus()
+		m.themeInput.SetValue(m.state.Config.Theme)
+		m.serverURLInput.SetValue(m.state.Config.ServerURL)
+		m.settingsFocus = 0
+		m.focusSettings()
 	case RouteLogin:
-		m.emailInput.Focus()
+		m.loginFocus = 0
+		m.emailInput.SetValue("")
+		m.passwordInput.SetValue("")
+		m.focusLogin()
+	case RouteRegister:
+		m.registerFocus = 0
+		m.emailInput.SetValue("")
+		m.passwordInput.SetValue("")
+		m.confirmPasswordInput.SetValue("")
+		m.focusRegister()
 	case RouteMovieForm:
 		m.focusMovieForm()
 	case RouteMovieDetail:
@@ -458,13 +761,46 @@ func (m *Model) goTo(route Route) {
 
 func (m *Model) clearFocus() {
 	m.themeInput.Blur()
+	m.serverURLInput.Blur()
 	m.emailInput.Blur()
+	m.passwordInput.Blur()
+	m.confirmPasswordInput.Blur()
 	m.titleInput.Blur()
 	m.yearInput.Blur()
 	m.searchInput.Blur()
 	m.ratingInput.Blur()
 	m.watchedAtInput.Blur()
 	m.reviewInput.Blur()
+}
+
+func (m *Model) focusSettings() {
+	m.clearFocus()
+	if m.settingsFocus == 0 {
+		m.themeInput.Focus()
+	} else {
+		m.serverURLInput.Focus()
+	}
+}
+
+func (m *Model) focusLogin() {
+	m.clearFocus()
+	if m.loginFocus == 0 {
+		m.emailInput.Focus()
+	} else {
+		m.passwordInput.Focus()
+	}
+}
+
+func (m *Model) focusRegister() {
+	m.clearFocus()
+	switch m.registerFocus {
+	case 0:
+		m.emailInput.Focus()
+	case 1:
+		m.passwordInput.Focus()
+	default:
+		m.confirmPasswordInput.Focus()
+	}
 }
 
 func (m *Model) resizeLists() {
@@ -490,7 +826,7 @@ func (m *Model) refreshMovies() {
 	}
 
 	movies, err := m.service.SearchMovies(context.Background(), domain.MovieSearchParams{
-		UserID: m.state.User.ID,
+		UserID: localUserID,
 		Query:  m.searchInput.Value(),
 		Filter: m.filter,
 		Sort:   m.sort,
@@ -522,7 +858,7 @@ func (m *Model) refreshStats() {
 	if m.service == nil {
 		return
 	}
-	stats, err := m.service.GetStats(context.Background(), m.state.User.ID)
+	stats, err := m.service.GetStats(context.Background(), localUserID)
 	if err != nil {
 		m.message = "Stats indisponibles : " + err.Error()
 		return
@@ -557,7 +893,7 @@ func (m *Model) createMovieFromForm() (domain.Movie, error) {
 	}
 
 	return m.service.CreateMovie(context.Background(), domain.Movie{
-		UserID: m.state.User.ID,
+		UserID: localUserID,
 		Title:  m.titleInput.Value(),
 		Year:   year,
 	})
@@ -638,7 +974,7 @@ func mainMenuItems() []list.Item {
 		menuItem{"Films", "Parcourir et gérer la liste locale", RouteMovieList},
 		menuItem{"Statistiques", "Voir les indicateurs de suivi", RouteStats},
 		menuItem{"Paramètres", "Changer le thème et les préférences", RouteSettings},
-		menuItem{"Connexion", "Préparer l'authentification serveur", RouteLogin},
+		menuItem{"Connexion", "Se connecter au serveur", RouteLogin},
 		menuItem{"Aide", "Afficher les raccourcis", RouteHelp},
 	}
 }

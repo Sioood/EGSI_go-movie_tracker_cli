@@ -1,11 +1,11 @@
 # Plan MovieTracker CLI — Suivi complet
 
-> Cocher `[x]` au fur et à mesure. **Phase livrée : 7** — API REST films authentifiée.
+> Cocher `[x]` au fur et à mesure. **Phase livrée : 8** — Connexion TUI ↔ serveur.
 
 **Dernière mise à jour** : 2026-07-08  
-**Phase en cours** : Phase 8 — Connexion TUI ↔ serveur
+**Phase en cours** : Phase 9 — Sync hybride
 
-**Progression globale** : `8 / 14` phases terminées
+**Progression globale** : `9 / 14` phases terminées
 
 ---
 
@@ -19,7 +19,7 @@
 - [x] **Phase 5** — [Statistiques](#phase-5--statistiques) · P1 · Moyen · ~2j
 - [x] **Phase 6** — [Auth serveur](#phase-6--authentification-serveur) · P0 · Moyen-Difficile · ~4j
 - [x] **Phase 7** — [API REST](#phase-7--api-rest-films) · P0 · Moyen · ~3j
-- [ ] **Phase 8** — [Login TUI](#phase-8--connexion-tui--serveur) · P0 · Moyen · ~2j
+- [x] **Phase 8** — [Login TUI](#phase-8--connexion-tui--serveur) · P0 · Moyen · ~2j
 - [ ] **Phase 9** — [Sync hybride](#phase-9--sync-hybride) · P0 · Difficile · ~5j
 - [ ] **Phase 10** — [Polish](#phase-10--robustesse-et-polish) · P1 · Moyen · ~3j
 - [ ] **Bonus A** — [TMDB](#bonus-a--intégration-tmdb) · P2 · Moyen · ~3j
@@ -266,19 +266,19 @@ make run-server
 
 ## Phase 8 — Connexion TUI ↔ serveur
 
-**Statut phase** : [ ] non commencée · [ ] en cours · [ ] terminée  
+**Statut phase** : [ ] non commencée · [ ] en cours · [x] terminée  
 **Priorité** : P0 | **Difficulté** : Moyen | **Temps** : ~2 jours
 
 #### Tâches
 
-- [ ] Écrans Login + Register
-- [ ] AuthClient HTTP
-- [ ] Config ~/.movietracker/ (0600)
-- [ ] offline_mode
+- [x] Écrans Login + Register
+- [x] AuthClient HTTP
+- [x] Config ~/.movietracker/ (0600)
+- [x] offline_mode
 
 #### Livrables
 
-- [ ] Token persisté, reconnexion auto
+- [x] Token persisté, reconnexion auto
 
 ---
 
@@ -347,7 +347,7 @@ make run-server
 | 5 | Statistiques | P1 | [x] | 1, 2 |
 | 6 | Auth serveur | P0 | [x] | 0 |
 | 7 | API REST | P0 | [x] | 1, 6 |
-| 8 | Login TUI | P0 | [ ] | 2, 6 |
+| 8 | Login TUI | P0 | [x] | 2, 6 |
 | 9 | Sync hybride | P0 | [ ] | 7, 8 |
 | 10 | Polish | P1 | [ ] | 9 |
 | A | TMDB | P2 | [ ] | 7, 3 |
@@ -358,4 +358,4 @@ make run-server
 
 ## Prochaine étape
 
-**Phase 8** — Connexion TUI ↔ serveur : AuthClient HTTP, écrans Login/Register fonctionnels, config `~/.movietracker/` persistée, mode `offline_mode`.
+**Phase 9** — Sync hybride : sync_metadata, push/pull pending, last-write-wins, indicateur footer.

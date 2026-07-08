@@ -11,8 +11,11 @@ const (
 	RouteStats       Route = "stats"
 	RouteSettings    Route = "settings"
 	RouteLogin       Route = "login"
+	RouteRegister    Route = "register"
 	RouteHelp        Route = "help"
 )
+
+const localUserID = "local-user"
 
 type Config struct {
 	Theme       string
@@ -20,22 +23,21 @@ type Config struct {
 	OfflineMode bool
 }
 
-type UserState struct {
-	ID    string
-	Email string
+type SessionState struct {
+	AccessToken   string
+	RefreshToken  string
+	ServerUserID  string
+	Email         string
+	Authenticated bool
 }
 
 type AppState struct {
-	Config Config
-	User   UserState
+	Config  Config
+	Session SessionState
 }
 
 func defaultState() AppState {
 	return AppState{
-		User: UserState{
-			ID:    "local-user",
-			Email: "local@movietracker",
-		},
 		Config: Config{
 			Theme:       "midnight",
 			ServerURL:   "http://localhost:8080",

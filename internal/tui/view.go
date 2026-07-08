@@ -55,14 +55,20 @@ func (m Model) View() string {
 }
 
 func (m Model) headerView() string {
-	user := "hors ligne"
-	if m.state.User.Email != "" {
-		user = m.state.User.Email
-	}
-
+	user := connectionStatus(m.state)
 	right := subtleStyle.Render(fmt.Sprintf("theme %s | %s", m.state.Config.Theme, user))
 	line := lipgloss.JoinHorizontal(lipgloss.Top, titleStyle.Render("MovieTracker"), "  ", right)
 	return line
+}
+
+func connectionStatus(state AppState) string {
+	if state.Config.OfflineMode {
+		return "hors ligne"
+	}
+	if state.Session.Authenticated && state.Session.Email != "" {
+		return state.Session.Email + " · en ligne"
+	}
+	return "non connecté"
 }
 
 func (m Model) footerView() string {
@@ -76,8 +82,17 @@ func (m Model) footerView() string {
 		help = "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste"
 	case RouteStats:
 		help = "m menu • s paramètres • l connexion • ? aide • q quitter"
-	case RouteSettings, RouteLogin:
-		help = "saisir du texte • entrée valider • esc menu • q quitter"
+	case RouteSettings, RouteLogin, RouteRegister:
+		help = "tab champ suivant • entrée valider • esc menu • q quitter"
+		if m.route == RouteLogin {
+			help = "tab champ suivant • entrée connexion • r inscription • esc menu • q quitter"
+		}
+		if m.route == RouteRegister {
+			help = "tab champ suivant • entrée inscription • esc connexion • q quitter"
+		}
+		if m.route == RouteSettings {
+			help = "tab champ suivant • o hors ligne • d déconnexion • entrée enregistrer • esc menu • q quitter"
+		}
 	}
 	return subtleStyle.Render(help)
 }
@@ -100,6 +115,8 @@ func (m Model) bodyView() string {
 		return m.settingsView()
 	case RouteLogin:
 		return m.loginView()
+	case RouteRegister:
+		return m.registerView()
 	case RouteHelp:
 		return m.helpView()
 	default:
@@ -256,33 +273,76 @@ func (m Model) statsView() string {
 func (m Model) settingsView() string {
 	message := m.message
 	if message == "" {
-		message = "Modifie le thème puis valide avec Entrée."
+		message = "Modifie les champs puis valide avec Entrée."
 	}
 
-	return panelStyle.Render(strings.Join([]string{
+	offline := "désactivé"
+	if m.state.Config.OfflineMode {
+		offline = "activé"
+	}
+
+	lines := []string{
 		activeStyle.Render("Paramètres"),
 		"",
-		"Thème",
+		label("Thème", m.settingsFocus == 0),
 		m.themeInput.View(),
 		"",
-		subtleStyle.Render("Serveur : " + m.state.Config.ServerURL),
-		subtleStyle.Render(fmt.Sprintf("Mode hors ligne : %t", m.state.Config.OfflineMode)),
+		label("URL serveur", m.settingsFocus == 1),
+		m.serverURLInput.View(),
 		"",
-		statusLine(message),
-	}, "\n"))
+		subtleStyle.Render("Mode hors ligne : " + offline + " (o pour basculer)"),
+	}
+	if m.state.Session.Authenticated {
+		lines = append(lines, subtleStyle.Render("Connecté : "+m.state.Session.Email+" (d pour déconnecter)"))
+	}
+	lines = append(lines, "", statusLine(message))
+	return panelStyle.Render(strings.Join(lines, "\n"))
 }
 
 func (m Model) loginView() string {
 	message := m.message
 	if message == "" {
-		message = "Saisis un email pour préparer l'écran d'authentification."
+		message = "Connecte-toi au serveur MovieTracker."
+	}
+	if m.authLoading {
+		message = "Connexion en cours..."
 	}
 
 	return panelStyle.Render(strings.Join([]string{
 		activeStyle.Render("Connexion"),
 		"",
-		"Email",
+		label("Email", m.loginFocus == 0),
 		m.emailInput.View(),
+		"",
+		label("Mot de passe", m.loginFocus == 1),
+		m.passwordInput.View(),
+		"",
+		subtleStyle.Render("Pas de compte ? Appuie sur r pour t'inscrire."),
+		"",
+		statusLine(message),
+	}, "\n"))
+}
+
+func (m Model) registerView() string {
+	message := m.message
+	if message == "" {
+		message = "Crée un compte sur le serveur MovieTracker."
+	}
+	if m.authLoading {
+		message = "Inscription en cours..."
+	}
+
+	return panelStyle.Render(strings.Join([]string{
+		activeStyle.Render("Inscription"),
+		"",
+		label("Email", m.registerFocus == 0),
+		m.emailInput.View(),
+		"",
+		label("Mot de passe", m.registerFocus == 1),
+		m.passwordInput.View(),
+		"",
+		label("Confirmation", m.registerFocus == 2),
+		m.confirmPasswordInput.View(),
 		"",
 		statusLine(message),
 	}, "\n"))
@@ -302,6 +362,7 @@ func (m Model) helpView() string {
 		"Esc ou m    revenir en arrière",
 		"s           paramètres",
 		"l           connexion",
+		"r           inscription (écran connexion)",
 		"? ou h      aide",
 		"q           quitter",
 	}, "\n"))

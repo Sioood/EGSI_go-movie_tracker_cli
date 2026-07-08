@@ -10,12 +10,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/service"
 )
 
 func TestKeyboardNavigationBetweenScreens(t *testing.T) {
 	store := newFakeMovieService()
 	store.movies = []domain.Movie{{ID: "movie-1", UserID: "local-user", Title: "Arrival", Year: 2016}}
-	model := New(store)
+	model := testNewModel(store)
 
 	model = press(t, model, "enter")
 	assertRoute(t, model, RouteMainMenu)
@@ -53,7 +54,7 @@ func TestKeyboardNavigationBetweenScreens(t *testing.T) {
 
 func TestMovieAddAndDetailSave(t *testing.T) {
 	store := newFakeMovieService()
-	model := New(store)
+	model := testNewModel(store)
 	model.goTo(RouteMovieList)
 
 	model = press(t, model, "a")
@@ -94,7 +95,7 @@ func TestMovieSearchAndFilters(t *testing.T) {
 	rating := 9.0
 	store.entries["movie-2"] = domain.WatchEntry{MovieID: "movie-2", Watched: true, Rating: &rating}
 
-	model := New(store)
+	model := testNewModel(store)
 	model.goTo(RouteMovieList)
 
 	model = press(t, model, "/")
@@ -124,7 +125,7 @@ func TestMovieSearchAndFilters(t *testing.T) {
 }
 
 func TestTypingShortcutLettersInMovieFormDoesNotNavigate(t *testing.T) {
-	model := New(newFakeMovieService())
+	model := testNewModel(newFakeMovieService())
 	model.goTo(RouteMovieList)
 	model = press(t, model, "a")
 	assertRoute(t, model, RouteMovieForm)
@@ -138,6 +139,94 @@ func TestTypingShortcutLettersInMovieFormDoesNotNavigate(t *testing.T) {
 	if model.titleInput.Value() != "mqsl" {
 		t.Fatalf("expected shortcut letters to be typed, got %q", model.titleInput.Value())
 	}
+}
+
+func TestLoginSuccess(t *testing.T) {
+	auth := &fakeAuthClient{
+		pair: service.TokenPair{AccessToken: "access", RefreshToken: "refresh"},
+		user: UserInfo{ID: "user-1", Email: "alice@example.com"},
+	}
+	var saved SessionState
+	model := testNewModelWithAuth(newFakeMovieService(), auth, func(state SessionState) error {
+		saved = state
+		return nil
+	})
+	model.goTo(RouteLogin)
+
+	model.emailInput.SetValue("alice@example.com")
+	model.passwordInput.SetValue("secret123")
+	model.loginFocus = 1
+	model = press(t, model, "enter")
+
+	updated, cmd := model.Update(authResultMsg{
+		session: sessionFromTokens(auth.pair, auth.user),
+		action:  "login",
+	})
+	model, _ = updated.(Model)
+	_ = cmd
+
+	if !model.state.Session.Authenticated || model.state.Session.Email != "alice@example.com" {
+		t.Fatalf("expected authenticated session, got %+v", model.state.Session)
+	}
+	if model.state.Config.OfflineMode {
+		t.Fatal("expected offline mode disabled after login")
+	}
+	if saved.Email != "alice@example.com" {
+		t.Fatalf("expected session saved, got %+v", saved)
+	}
+}
+
+func TestRegisterNavigation(t *testing.T) {
+	model := testNewModel(newFakeMovieService())
+	model.goTo(RouteLogin)
+	model = press(t, model, "r")
+	assertRoute(t, model, RouteRegister)
+	model = press(t, model, "esc")
+	assertRoute(t, model, RouteLogin)
+}
+
+func testNewModel(store MovieClient) Model {
+	return New(Options{MovieService: store})
+}
+
+func testNewModelWithAuth(store MovieClient, auth AuthClient, saveSession func(SessionState) error) Model {
+	return New(Options{
+		MovieService: store,
+		Auth:         auth,
+		SaveSession:  saveSession,
+		SaveConfig:   func(Config) error { return nil },
+	})
+}
+
+type fakeAuthClient struct {
+	pair service.TokenPair
+	user UserInfo
+	err  error
+}
+
+func (f *fakeAuthClient) Register(ctx context.Context, email, password string) (service.TokenPair, error) {
+	if f.err != nil {
+		return service.TokenPair{}, f.err
+	}
+	return f.pair, nil
+}
+
+func (f *fakeAuthClient) Login(ctx context.Context, email, password string) (service.TokenPair, error) {
+	if f.err != nil {
+		return service.TokenPair{}, f.err
+	}
+	return f.pair, nil
+}
+
+func (f *fakeAuthClient) Refresh(ctx context.Context, refreshToken string) (service.TokenPair, error) {
+	return f.pair, f.err
+}
+
+func (f *fakeAuthClient) Me(ctx context.Context, accessToken string) (UserInfo, error) {
+	if f.err != nil {
+		return UserInfo{}, f.err
+	}
+	return f.user, nil
 }
 
 func press(t *testing.T, model Model, key string) Model {
