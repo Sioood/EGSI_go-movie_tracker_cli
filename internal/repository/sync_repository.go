@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
 )
@@ -199,4 +201,200 @@ func (r *SyncRepository) HasPendingDelete(ctx context.Context, movieID string) (
 		return false, fmt.Errorf("%w: has pending delete: %v", apperrors.ErrDB, err)
 	}
 	return count > 0, nil
+}
+
+func (r *SyncRepository) HasPending(ctx context.Context, entityType, entityID string) (bool, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM sync_pending
+		WHERE entity_type = ? AND entity_id = ?
+	`, entityType, entityID)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("%w: has pending: %v", apperrors.ErrDB, err)
+	}
+	return count > 0, nil
+}
+
+func (r *SyncRepository) HasOpenConflict(ctx context.Context, entityType, entityID string) (bool, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM sync_conflicts
+		WHERE entity_type = ? AND entity_id = ? AND resolved_at IS NULL
+	`, entityType, entityID)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false, fmt.Errorf("%w: has open conflict: %v", apperrors.ErrDB, err)
+	}
+	return count > 0, nil
+}
+
+func (r *SyncRepository) RecordConflict(ctx context.Context, conflict domain.SyncConflict) error {
+	if conflict.ID == "" {
+		conflict.ID = uuid.NewString()
+	}
+	if conflict.DetectedAt.IsZero() {
+		conflict.DetectedAt = time.Now().UTC()
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO sync_conflicts (
+			id, entity_type, entity_id, local_json, remote_json,
+			local_device_id, remote_device_id, detected_at, resolved_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+		ON CONFLICT(id) DO NOTHING
+	`, conflict.ID, conflict.EntityType, conflict.EntityID, conflict.LocalJSON, conflict.RemoteJSON,
+		conflict.LocalDeviceID, conflict.RemoteDeviceID, formatTime(conflict.DetectedAt))
+	if err != nil {
+		return fmt.Errorf("%w: record conflict: %v", apperrors.ErrDB, err)
+	}
+	return nil
+}
+
+func (r *SyncRepository) ConflictCount(ctx context.Context) (int, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sync_conflicts WHERE resolved_at IS NULL`)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("%w: conflict count: %v", apperrors.ErrDB, err)
+	}
+	return count, nil
+}
+
+func (r *SyncRepository) ListConflicts(ctx context.Context) ([]domain.SyncConflict, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, entity_type, entity_id, local_json, remote_json,
+			local_device_id, remote_device_id, detected_at, resolved_at
+		FROM sync_conflicts
+		WHERE resolved_at IS NULL
+		ORDER BY detected_at ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("%w: list conflicts: %v", apperrors.ErrDB, err)
+	}
+	defer rows.Close()
+
+	var conflicts []domain.SyncConflict
+	for rows.Next() {
+		var conflict domain.SyncConflict
+		var detectedAt string
+		var resolvedAt sql.NullString
+		if err := rows.Scan(
+			&conflict.ID,
+			&conflict.EntityType,
+			&conflict.EntityID,
+			&conflict.LocalJSON,
+			&conflict.RemoteJSON,
+			&conflict.LocalDeviceID,
+			&conflict.RemoteDeviceID,
+			&detectedAt,
+			&resolvedAt,
+		); err != nil {
+			return nil, fmt.Errorf("%w: scan conflict: %v", apperrors.ErrDB, err)
+		}
+		parsedDetected, err := parseTime(detectedAt)
+		if err != nil {
+			return nil, err
+		}
+		conflict.DetectedAt = parsedDetected
+		if resolvedAt.Valid {
+			parsedResolved, err := parseTime(resolvedAt.String)
+			if err != nil {
+				return nil, err
+			}
+			conflict.ResolvedAt = &parsedResolved
+		}
+		conflicts = append(conflicts, conflict)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate conflicts: %v", apperrors.ErrDB, err)
+	}
+	return conflicts, nil
+}
+
+func (r *SyncRepository) ResolveConflict(ctx context.Context, id, choice string) error {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT entity_type, entity_id, local_json, remote_json
+		FROM sync_conflicts
+		WHERE id = ? AND resolved_at IS NULL
+	`, id)
+
+	var entityType, entityID, localJSON, remoteJSON string
+	if err := row.Scan(&entityType, &entityID, &localJSON, &remoteJSON); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("%w: conflict not found", apperrors.ErrValidation)
+		}
+		return fmt.Errorf("%w: get conflict: %v", apperrors.ErrDB, err)
+	}
+
+	switch entityType {
+	case domain.SyncEntityMovie:
+		var chosen domain.Movie
+		source := remoteJSON
+		if choice == domain.ConflictChoiceLocal {
+			source = localJSON
+		}
+		if err := json.Unmarshal([]byte(source), &chosen); err != nil {
+			return fmt.Errorf("parse conflict movie: %w", err)
+		}
+		if _, err := r.ApplyMovieLWW(ctx, chosen); err != nil {
+			return err
+		}
+		_ = r.MarkPending(ctx, PendingEntityMovie, chosen.ID, PendingOpUpsert)
+	case domain.SyncEntityWatchEntry:
+		var chosen domain.WatchEntry
+		source := remoteJSON
+		if choice == domain.ConflictChoiceLocal {
+			source = localJSON
+		}
+		if err := json.Unmarshal([]byte(source), &chosen); err != nil {
+			return fmt.Errorf("parse conflict watch entry: %w", err)
+		}
+		if _, err := r.ApplyWatchEntryLWW(ctx, chosen); err != nil {
+			return err
+		}
+		_ = r.MarkPending(ctx, PendingEntityWatchEntry, chosen.MovieID, PendingOpUpsert)
+	default:
+		return fmt.Errorf("%w: unknown conflict entity %s", apperrors.ErrValidation, entityType)
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE sync_conflicts SET resolved_at = ? WHERE id = ?
+	`, formatTime(time.Now().UTC()), id)
+	if err != nil {
+		return fmt.Errorf("%w: resolve conflict: %v", apperrors.ErrDB, err)
+	}
+	return nil
+}
+
+func (r *SyncRepository) UpsertDevice(ctx context.Context, deviceID, deviceName string) error {
+	if deviceID == "" {
+		return nil
+	}
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO sync_devices (device_id, device_name, last_seen_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT(device_id) DO UPDATE SET
+			device_name = CASE WHEN excluded.device_name != '' THEN excluded.device_name ELSE sync_devices.device_name END,
+			last_seen_at = excluded.last_seen_at
+	`, deviceID, deviceName, formatTime(time.Now().UTC()))
+	if err != nil {
+		return fmt.Errorf("%w: upsert device: %v", apperrors.ErrDB, err)
+	}
+	return nil
+}
+
+func (r *SyncRepository) GetDeviceName(ctx context.Context, deviceID string) (string, error) {
+	if deviceID == "" {
+		return "", nil
+	}
+	row := r.db.QueryRowContext(ctx, `SELECT device_name FROM sync_devices WHERE device_id = ?`, deviceID)
+	var name string
+	if err := row.Scan(&name); err != nil {
+		if err == sql.ErrNoRows {
+			return deviceID, nil
+		}
+		return "", fmt.Errorf("%w: get device name: %v", apperrors.ErrDB, err)
+	}
+	if name == "" {
+		return deviceID, nil
+	}
+	return name, nil
 }

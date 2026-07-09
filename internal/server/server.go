@@ -6,6 +6,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/tmdb"
 )
 
 // Services groups all application services needed by the HTTP layer.
@@ -14,6 +15,19 @@ type Services struct {
 	Movies  *service.MovieService
 	Stats   *service.StatsService
 	Backups *service.BackupService
+	TMDB    *ExternalTMDB
+}
+
+// ExternalTMDB wraps the TMDB client for HTTP handlers.
+type ExternalTMDB struct {
+	Client *tmdb.Client
+}
+
+func (e *ExternalTMDB) SearchMovies(r *http.Request, query string, year int) ([]tmdb.SearchResult, error) {
+	if e == nil || e.Client == nil {
+		return nil, nil
+	}
+	return e.Client.SearchMovies(r.Context(), query, year)
 }
 
 // NewRouter builds the complete HTTP mux with all routes and middleware.
@@ -55,6 +69,12 @@ func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
 		syh := &syncHandler{movies: svcs.Movies}
 		mux.Handle("GET /api/v1/sync", auth(http.HandlerFunc(syh.export)))
 		mux.Handle("POST /api/v1/sync", auth(http.HandlerFunc(syh.importData)))
+	}
+
+	// — External search (TMDB proxy) —
+	if svcs.TMDB != nil && svcs.TMDB.Client != nil {
+		eh := &externalHandler{tmdb: svcs.TMDB}
+		mux.Handle("GET /api/v1/search/external", auth(http.HandlerFunc(eh.search)))
 	}
 
 	// — Backup config/state —

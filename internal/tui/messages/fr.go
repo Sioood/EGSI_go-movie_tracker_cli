@@ -22,17 +22,19 @@ var UI = struct {
 	SyncPending   string
 	SyncUpToDate  string
 	SyncReady     string
-	SyncPendingFmt string
+	SyncPendingFmt   string
+	SyncConflictsFmt string
 
 	// Footer hints
-	FooterDefault    string
-	FooterSplash     string
-	FooterMovieForm  string
+	FooterDefault     string
+	FooterSplash      string
+	FooterMovieForm   string
 	FooterMovieDetail string
-	FooterStats      string
-	FooterSettings   string
-	FooterLogin      string
-	FooterRegister   string
+	FooterStats       string
+	FooterSettings    string
+	FooterLogin       string
+	FooterRegister    string
+	FooterConflicts   string
 
 	// Splash
 	SplashWelcome string
@@ -75,6 +77,7 @@ var UI = struct {
 	OfflineToggleHint   string
 	ConnectedHintFmt    string
 	BackupHint          string
+	ExportHint          string
 	BackupExportOK      string
 	BackupImportOK      string
 	BackupNeedAuth      string
@@ -82,6 +85,8 @@ var UI = struct {
 	BackupExporting     string
 	BackupImporting     string
 	BackupLocalExportFmt string
+	MoviesExportFmt     string
+	ExportUnavailable   string
 	ThemeChangedFmt     string
 
 	// Stats
@@ -144,6 +149,36 @@ var UI = struct {
 	RatingPlaceholder    string
 	DatePlaceholder      string
 	ReviewPlaceholder    string
+	TMDBSearchPlaceholder string
+
+	// TMDB
+	TMDBSearchTitle      string
+	TMDBSearchLabel      string
+	TMDBResultsTitle     string
+	TMDBSearchHint       string
+	TMDBResultsHint      string
+	TMDBSearching        string
+	TMDBNoResults        string
+	TMDBQueryTooShort    string
+	TMDBUnavailable      string
+	TMDBSelectedFmt      string
+	ExternalIDFmt        string
+
+	// Conflicts
+	ConflictTitle            string
+	ConflictScreenHint       string
+	ConflictListHint         string
+	ConflictEmpty            string
+	ConflictResolved         string
+	ConflictMovieFmt         string
+	ConflictWatchFmt         string
+	ConflictGenericFmt       string
+	ConflictChoiceFmt        string
+	ConflictLocalLabel       string
+	ConflictRemoteLabel      string
+	ConflictLocalPreviewFmt  string
+	ConflictRemotePreviewFmt string
+	ConflictNoPreview        string
 
 	// Movie list status
 	StatusUnwatched string
@@ -164,13 +199,15 @@ var UI = struct {
 	SyncUpToDate:     "sync · à jour",
 	SyncReady:        "sync · prêt",
 	SyncPendingFmt:   "sync · %d en attente",
+	SyncConflictsFmt: "sync · %d conflit(s) — K pour résoudre",
 
-	FooterDefault:     "↑/↓ naviguer • entrée sélectionner • / chercher • f filtre • t tri • a ajouter • S sync • q quitter",
+	FooterDefault:     "↑/↓ naviguer • entrée sélectionner • / chercher • f filtre • t tri • a ajouter • S sync • K conflits • q quitter",
+	FooterConflicts:   "↑/↓ conflit • tab local/distant • entrée résoudre • esc menu • q quitter",
 	FooterSplash:      "entrée commencer • q quitter",
-	FooterMovieForm:   "tab changer de champ • entrée ajouter • esc liste • q quitter",
+	FooterMovieForm:   "tab champ • ctrl+t recherche TMDB • entrée ajouter • esc retour • q quitter",
 	FooterMovieDetail: "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste",
 	FooterStats:       "m menu • s paramètres • l connexion • S sync • ? aide • q quitter",
-	FooterSettings:    "←/→ thème • tab champ • o hors ligne • e export serveur • i import serveur • E export local • entrée enregistrer • esc menu • q quitter",
+	FooterSettings:    "←/→ thème • tab champ • o hors ligne • e export serveur • i import serveur • E export local • j/J films JSON/CSV • entrée enregistrer • esc menu • q quitter",
 	FooterLogin:       "tab champ suivant • entrée connexion • r inscription • esc menu • q quitter",
 	FooterRegister:    "tab champ suivant • entrée inscription • esc connexion • q quitter",
 
@@ -186,7 +223,7 @@ var UI = struct {
 	AddMovieHint:    "Appuie sur a pour ajouter un film.",
 	MovieFormHint:   "Titre obligatoire, année optionnelle.",
 	MovieDetailHint: "Modifie les champs puis valide avec Entrée.",
-	SettingsHint:    "←/→ change le thème, e/i/E pour backup, Entrée pour enregistrer.",
+	SettingsHint:    "←/→ change le thème, e/i/E pour backup, j/J export films, Entrée pour enregistrer.",
 	LoginHint:       "Connecte-toi au serveur MovieTracker.",
 	RegisterHint:    "Crée un compte sur le serveur MovieTracker.",
 	LoginLoading:    "Connexion en cours...",
@@ -211,6 +248,7 @@ var UI = struct {
 	OfflineToggleHint: "Mode hors ligne : %s (o pour basculer)",
 	ConnectedHintFmt:     "Connecté : %s (d pour déconnecter)",
 	BackupHint:           "Backup : e → serveur | i ← serveur | E → fichiers locaux",
+	ExportHint:           "Export films : j → JSON | J → CSV",
 	BackupExportOK:       "Configuration et état exportés vers le serveur.",
 	BackupImportOK:       "Configuration et état importés depuis le serveur.",
 	BackupNeedAuth:       "Connecte-toi au serveur pour utiliser le backup distant.",
@@ -218,6 +256,8 @@ var UI = struct {
 	BackupExporting:      "Export vers le serveur...",
 	BackupImporting:      "Import depuis le serveur...",
 	BackupLocalExportFmt: "Fichiers JSON exportés dans %s",
+	MoviesExportFmt:      "Films exportés dans %s",
+	ExportUnavailable:    "Service d'export indisponible.",
 	ThemeChangedFmt:      "Thème : %s",
 
 	StatsTitle:         "Statistiques",
@@ -274,7 +314,35 @@ var UI = struct {
 	SearchPlaceholder:    "Rechercher un titre...",
 	RatingPlaceholder:    "8.5",
 	DatePlaceholder:      "YYYY-MM-DD",
-	ReviewPlaceholder:    "Votre critique...",
+	ReviewPlaceholder:     "Votre critique...",
+	TMDBSearchPlaceholder: "Rechercher sur TMDB...",
+
+	TMDBSearchTitle:     "Recherche TMDB",
+	TMDBSearchLabel:     "Titre du film",
+	TMDBResultsTitle:    "Résultats TMDB",
+	TMDBSearchHint:      "Saisis un titre puis Entrée pour chercher. Esc pour revenir au formulaire.",
+	TMDBResultsHint:     "↑/↓ sélectionner un résultat, Entrée pour confirmer.",
+	TMDBSearching:       "Recherche TMDB en cours...",
+	TMDBNoResults:       "Aucun résultat TMDB pour cette recherche.",
+	TMDBQueryTooShort:   "Saisis au moins 2 caractères pour chercher.",
+	TMDBUnavailable:     "Recherche TMDB indisponible (connexion ou clé API).",
+	TMDBSelectedFmt:     "Film sélectionné : %s",
+	ExternalIDFmt:         "Référence externe : %s",
+
+	ConflictTitle:           "Conflits de synchronisation",
+	ConflictScreenHint:      "Choisis la version à conserver pour chaque conflit.",
+	ConflictListHint:        "Conflit en attente",
+	ConflictEmpty:           "Aucun conflit de synchronisation.",
+	ConflictResolved:        "Conflit résolu.",
+	ConflictMovieFmt:        "Film : %s",
+	ConflictWatchFmt:        "Suivi : %s",
+	ConflictGenericFmt:      "%s · %s",
+	ConflictChoiceFmt:       "Sélection : %s",
+	ConflictLocalLabel:      "Version locale",
+	ConflictRemoteLabel:     "Version distante",
+	ConflictLocalPreviewFmt: "Local (%s) : %s",
+	ConflictRemotePreviewFmt:"Distant (%s) : %s",
+	ConflictNoPreview:       "aucun détail",
 
 	StatusUnwatched: "non vu",
 

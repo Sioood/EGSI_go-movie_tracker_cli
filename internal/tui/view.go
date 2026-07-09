@@ -66,6 +66,8 @@ func (m Model) footerView() string {
 		help = messages.UI.FooterLogin
 	case RouteRegister:
 		help = messages.UI.FooterRegister
+	case RouteSyncConflicts:
+		help = messages.UI.FooterConflicts
 	}
 	if syncLine != "" {
 		return s.Subtle.Render(syncLine + "  |  " + help)
@@ -88,9 +90,14 @@ func (m Model) syncFooterLine() string {
 		return messages.UI.SyncError + " : " + truncate(detail, 40)
 	case SyncStatusPending:
 		return messages.SyncPendingLine(m.pendingCount)
+	case SyncStatusConflicts:
+		return fmt.Sprintf(messages.UI.SyncConflictsFmt, m.conflictCount)
 	case SyncStatusSynced:
 		return messages.UI.SyncUpToDate
 	default:
+		if m.conflictCount > 0 {
+			return fmt.Sprintf(messages.UI.SyncConflictsFmt, m.conflictCount)
+		}
 		if m.pendingCount > 0 {
 			return messages.SyncPendingLine(m.pendingCount)
 		}
@@ -130,6 +137,8 @@ func (m Model) bodyView() string {
 		return m.registerView()
 	case RouteHelp:
 		return m.helpView()
+	case RouteSyncConflicts:
+		return m.conflictsView()
 	default:
 		return m.menu.View()
 	}
@@ -180,6 +189,10 @@ func (m Model) movieListView() string {
 
 func (m Model) movieFormView() string {
 	s := m.styles
+	if m.movieFormMode == movieFormModeSearch {
+		return m.movieFormSearchView()
+	}
+
 	message := m.message
 	kind := m.messageKind
 	if message == "" {
@@ -198,6 +211,28 @@ func (m Model) movieFormView() string {
 		"",
 		m.statusLine(kind, message),
 	}, "\n"))
+}
+
+func (m Model) movieFormSearchView() string {
+	s := m.styles
+	message := m.message
+	kind := m.messageKind
+	if message == "" {
+		message = messages.UI.TMDBSearchHint
+		kind = messages.KindInfo
+	}
+
+	lines := []string{
+		s.Active.Render(messages.UI.TMDBSearchTitle),
+		"",
+		m.label(messages.UI.TMDBSearchLabel, true),
+		m.tmdbQueryInput.View(),
+	}
+	if len(m.tmdbResultsData) > 0 {
+		lines = append(lines, "", m.tmdbResults.View())
+	}
+	lines = append(lines, "", m.statusLine(kind, message))
+	return s.Panel.Render(strings.Join(lines, "\n"))
 }
 
 func (m Model) movieDetailView() string {
@@ -222,9 +257,14 @@ func (m Model) movieDetailView() string {
 		kind = messages.KindInfo
 	}
 
-	return s.Panel.Render(strings.Join([]string{
+	detailLines := []string{
 		s.Active.Render(title),
 		s.Subtle.Render("Vu : " + watched),
+	}
+	if m.selectedMovie.ExternalID != "" {
+		detailLines = append(detailLines, s.Subtle.Render(fmt.Sprintf(messages.UI.ExternalIDFmt, m.selectedMovie.ExternalID)))
+	}
+	detailLines = append(detailLines,
 		"",
 		m.label(messages.UI.RatingLabel, m.detailFocus == 0),
 		m.ratingInput.View(),
@@ -236,7 +276,8 @@ func (m Model) movieDetailView() string {
 		m.reviewInput.View(),
 		"",
 		m.statusLine(kind, message),
-	}, "\n"))
+	)
+	return s.Panel.Render(strings.Join(detailLines, "\n"))
 }
 
 func (m Model) statsView() string {
@@ -311,6 +352,7 @@ func (m Model) settingsView() string {
 		"",
 		s.Subtle.Render(fmt.Sprintf(messages.UI.OfflineToggleHint, messages.OfflineModeLabel(m.state.Config.OfflineMode))),
 		s.Subtle.Render(messages.UI.BackupHint),
+		s.Subtle.Render(messages.UI.ExportHint),
 	}
 	if m.state.Session.Authenticated {
 		lines = append(lines, s.Subtle.Render(fmt.Sprintf(messages.UI.ConnectedHintFmt, m.state.Session.Email)))

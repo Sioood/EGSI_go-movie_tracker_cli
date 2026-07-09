@@ -64,6 +64,7 @@ func TestServiceRunMigratesAndSyncs(t *testing.T) {
 		client.NewSyncClient(srv.URL),
 		&tokenRefresher{auth: authClient},
 		func() appsync.SessionAccess { return session },
+		func() string { return "test-device" },
 		func() bool { return true },
 		nil,
 	)

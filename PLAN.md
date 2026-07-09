@@ -5,7 +5,7 @@
 **Dernière mise à jour** : 2026-07-08  
 **Priorité actuelle** : [Grille de notation](#grille-de-notation--audit-et-plan-pour-la-note-maximale) — phases 11 → 17
 
-**Progression produit** : `11 / 14` phases (0–10 + bonus A/B/C)  
+**Progression produit** : `14 / 14` phases (0–10 + bonus A/B/C)  
 **Progression grille** : `7 / 7` phases terminées (11–17) · **Score estimé : ~20 / 20**
 
 ---
@@ -23,9 +23,9 @@
 - [x] **Phase 8** — [Login TUI](#phase-8--connexion-tui--serveur) · P0 · Moyen · ~2j
 - [x] **Phase 9** — [Sync hybride](#phase-9--sync-hybride) · P0 · Difficile · ~5j
 - [x] **Phase 10** — [Polish](#phase-10--robustesse-et-polish) · P1 · Moyen · ~3j
-- [ ] **Bonus A** — [TMDB](#bonus-a--intégration-tmdb) · P2 · Moyen · ~3j
-- [ ] **Bonus B** — [Export CSV/JSON](#bonus-b--export-csv--json) · P3 · Facile · ~1j
-- [ ] **Bonus C** — [Sync avancée](#bonus-c--améliorations-sync) · P3 · Difficile · ~3j
+- [x] **Bonus A** — [TMDB](#bonus-a--tmdb--p2) · P2 · Moyen · ~3j
+- [x] **Bonus B** — [Export CSV/JSON](#bonus-b--export--p3) · P3 · Facile · ~1j
+- [x] **Bonus C** — [Sync avancée](#bonus-c--sync-avancée--p3) · P3 · Difficile · ~3j
 
 ### Grille de notation ESGI (note maximale)
 
@@ -333,18 +333,18 @@ make run-server
 
 ## Bonus A — TMDB · P2
 
-- [ ] TMDB_API_KEY, client, endpoint search/external
-- [ ] Recherche TUI à l'ajout
-- [ ] Cache métadonnées
+- [x] TMDB_API_KEY, client, endpoint search/external
+- [x] Recherche TUI à l'ajout
+- [x] Cache métadonnées
 
 ## Bonus B — Export · P3
 
-- [ ] ExportService, JSON + CSV depuis Settings
+- [x] ExportService, JSON + CSV depuis Settings
 
 ## Bonus C — Sync avancée · P3
 
-- [ ] Résolution conflits manuelle TUI
-- [ ] Multi-appareils avancé
+- [x] Résolution conflits manuelle TUI
+- [x] Multi-appareils avancé
 
 ---
 
@@ -363,9 +363,9 @@ make run-server
 | 8 | Login TUI | P0 | [x] | 2, 6 |
 | 9 | Sync hybride | P0 | [x] | 7, 8 |
 | 10 | Polish | P1 | [x] | 9 |
-| A | TMDB | P2 | [ ] | 7, 3 |
-| B | Export | P3 | [ ] | 1 |
-| C | Sync avancée | P3 | [ ] | 9 |
+| A | TMDB | P2 | [x] | 7, 3 |
+| B | Export | P3 | [x] | 1 |
+| C | Sync avancée | P3 | [x] | 9 |
 | 11 | JSON XDG config + state | P0 | [x] | 10 |
 | 12 | Thèmes Lipgloss | P0 | [x] | 11 |
 | 13 | API backup serveur | P0 | [x] | 11, 7 |

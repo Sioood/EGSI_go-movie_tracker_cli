@@ -16,6 +16,7 @@ import (
 	"github.com/movietracker/movie-tracker/internal/config"
 	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/tmdb"
 	"github.com/movietracker/movie-tracker/internal/tui/messages"
 )
 
@@ -61,6 +62,8 @@ type Options struct {
 	SaveSession   func(SessionState) error
 	ClearSession  func() error
 	ExportLocal   func(BackupSnapshot) (string, error)
+	ExportMovies  func(format string) (string, error)
+	TMDBSearch    TMDBSearcher
 }
 
 type authResultMsg struct {
@@ -81,6 +84,7 @@ type Model struct {
 	saveConfig           func(Config) error
 	saveState            func(config.State) error
 	exportLocal          func(BackupSnapshot) (string, error)
+	exportMovies         func(format string) (string, error)
 	saveSession          func(SessionState) error
 	clearSession         func() error
 	styles               ThemeStyles
@@ -91,6 +95,11 @@ type Model struct {
 	lastSyncAt           time.Time
 	syncSyncing          bool
 	syncError            string
+	conflictCount        int
+	conflicts            list.Model
+	conflictRecords      []domain.SyncConflict
+	selectedConflict     domain.SyncConflict
+	conflictChoice       string
 	menu                 list.Model
 	movies               list.Model
 	movieRecords         []domain.Movie
@@ -120,6 +129,13 @@ type Model struct {
 	messageKind          messages.Kind
 	authLoading          bool
 	backupLoading        bool
+	movieFormMode        string
+	tmdbQueryInput       textinput.Model
+	tmdbResults          list.Model
+	tmdbResultsData      []tmdb.SearchResult
+	tmdbSearching        bool
+	tmdbSearch           TMDBSearcher
+	selectedExternalID   string
 }
 
 func (m *Model) setMessage(kind messages.Kind, text string) {
@@ -148,6 +164,16 @@ func New(opts Options) Model {
 	movies.Title = messages.UI.MoviesTitle
 	movies.SetShowStatusBar(false)
 	movies.SetFilteringEnabled(false)
+
+	tmdbResults := list.New(nil, list.NewDefaultDelegate(), 0, 0)
+	tmdbResults.Title = messages.UI.TMDBResultsTitle
+	tmdbResults.SetShowStatusBar(false)
+	tmdbResults.SetFilteringEnabled(false)
+
+	conflicts := list.New(nil, list.NewDefaultDelegate(), 0, 0)
+	conflicts.Title = messages.UI.ConflictTitle
+	conflicts.SetShowStatusBar(false)
+	conflicts.SetFilteringEnabled(false)
 
 	state := opts.State
 	if state.Config.Theme == "" {
@@ -183,6 +209,7 @@ func New(opts Options) Model {
 	searchInput := newTextInput(messages.UI.SearchPlaceholder, 80)
 	ratingInput := newTextInput(messages.UI.RatingPlaceholder, 4)
 	watchedAtInput := newTextInput(messages.UI.DatePlaceholder, 10)
+	tmdbQueryInput := newTextInput(messages.UI.TMDBSearchPlaceholder, 120)
 
 	reviewInput := textarea.New()
 	reviewInput.Placeholder = messages.UI.ReviewPlaceholder
@@ -198,6 +225,8 @@ func New(opts Options) Model {
 		saveConfig:           opts.SaveConfig,
 		saveState:            opts.SaveState,
 		exportLocal:          opts.ExportLocal,
+		exportMovies:         opts.ExportMovies,
+		tmdbSearch:           opts.TMDBSearch,
 		saveSession:          opts.SaveSession,
 		clearSession:         opts.ClearSession,
 		styles:               BuildThemeStyles(state.Config.Theme),
@@ -218,6 +247,11 @@ func New(opts Options) Model {
 		ratingInput:          ratingInput,
 		watchedAtInput:       watchedAtInput,
 		reviewInput:          reviewInput,
+		tmdbQueryInput:       tmdbQueryInput,
+		tmdbResults:          tmdbResults,
+		conflicts:            conflicts,
+		conflictChoice:       domain.ConflictChoiceLocal,
+		movieFormMode:        movieFormModeManual,
 		filter:               initialFilter,
 		sort:                 initialSort,
 	}
@@ -264,6 +298,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.startSync()
 	case syncResultMsg:
 		return m.handleSyncResult(msg)
+	case tmdbSearchResultMsg:
+		return m.handleTMDBSearchResult(msg)
 	case backupResultMsg:
 		return m.handleBackupResult(msg)
 	case tea.KeyMsg:
@@ -320,6 +356,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.route == RouteMovieForm || m.route == RouteMovieDetail {
+			if m.route == RouteMovieForm && m.movieFormMode == movieFormModeSearch {
+				return m.updateMovieFormSearch(msg)
+			}
 			m.goTo(RouteMovieList)
 			return m, nil
 		}
@@ -332,6 +371,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.route {
 	case RouteMovieForm:
 		return m.updateMovieForm(msg)
+	case RouteSyncConflicts:
+		return m.updateConflicts(msg)
 	case RouteSettings:
 		return m.updateSettings(msg)
 	case RouteLogin:
@@ -373,10 +414,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case "S":
-		if m.route != RouteMovieForm && m.route != RouteLogin && m.route != RouteRegister && m.route != RouteSettings {
+		if m.route != RouteMovieForm && m.route != RouteLogin && m.route != RouteRegister && m.route != RouteSettings && m.route != RouteSyncConflicts {
 			if !m.searchInput.Focused() {
 				return m.startSync()
 			}
+		}
+	case "K":
+		if m.route != RouteSplash && m.route != RouteLogin && m.route != RouteRegister {
+			return m.openConflicts()
 		}
 	}
 
@@ -473,7 +518,17 @@ func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateMovieForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.movieFormMode == movieFormModeSearch {
+		return m.updateMovieFormSearch(msg)
+	}
+
 	switch msg.String() {
+	case "ctrl+t":
+		return m.enterTMDBSearch()
+	case "t":
+		if strings.TrimSpace(m.titleInput.Value()) == "" {
+			return m.enterTMDBSearch()
+		}
 	case "tab", "shift+tab":
 		m.formFocus = (m.formFocus + 1) % 2
 		m.focusMovieForm()
@@ -583,6 +638,10 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.BackupLocalExportFmt, dir))
 		return m, nil
+	case "j":
+		return m.exportMoviesFile("json")
+	case "J":
+		return m.exportMoviesFile("csv")
 	case "enter", "ctrl+s":
 		return m.saveSettings()
 	}
@@ -893,6 +952,7 @@ func (m *Model) clearFocus() {
 	m.confirmPasswordInput.Blur()
 	m.titleInput.Blur()
 	m.yearInput.Blur()
+	m.tmdbQueryInput.Blur()
 	m.searchInput.Blur()
 	m.ratingInput.Blur()
 	m.watchedAtInput.Blur()
@@ -940,6 +1000,8 @@ func (m *Model) resizeLists() {
 
 	m.menu.SetSize(listWidth, listHeight)
 	m.movies.SetSize(listWidth, listHeight)
+	m.tmdbResults.SetSize(listWidth, listHeight)
+	m.conflicts.SetSize(listWidth, listHeight)
 	m.reviewInput.SetWidth(listWidth)
 }
 
@@ -993,6 +1055,11 @@ func (m *Model) refreshStats() {
 func (m *Model) prepareMovieForm() {
 	m.titleInput.SetValue("")
 	m.yearInput.SetValue("")
+	m.selectedExternalID = ""
+	m.movieFormMode = movieFormModeManual
+	m.tmdbResults.SetItems(nil)
+	m.tmdbResultsData = nil
+	m.tmdbSearching = false
 	m.formFocus = 0
 	m.clearMessage()
 }
@@ -1017,9 +1084,10 @@ func (m *Model) createMovieFromForm() (domain.Movie, error) {
 	}
 
 	return m.service.CreateMovie(context.Background(), domain.Movie{
-		UserID: m.currentUserID(),
-		Title:  m.titleInput.Value(),
-		Year:   year,
+		UserID:     m.currentUserID(),
+		Title:      m.titleInput.Value(),
+		Year:       year,
+		ExternalID: m.selectedExternalID,
 	})
 }
 
@@ -1181,4 +1249,18 @@ func parseOptionalDate(value string) (*time.Time, error) {
 		return nil, fmt.Errorf("date invalide, format attendu YYYY-MM-DD")
 	}
 	return &parsed, nil
+}
+
+func (m Model) exportMoviesFile(format string) (tea.Model, tea.Cmd) {
+	if m.exportMovies == nil {
+		m.setMessage(messages.KindError, messages.UI.ExportUnavailable)
+		return m, nil
+	}
+	path, err := m.exportMovies(format)
+	if err != nil {
+		m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.SaveFailedFmt, messages.UserMessage(err)))
+		return m, nil
+	}
+	m.setMessage(messages.KindSuccess, fmt.Sprintf(messages.UI.MoviesExportFmt, path))
+	return m, nil
 }

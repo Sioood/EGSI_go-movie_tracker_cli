@@ -31,7 +31,7 @@ func (m *Model) persistState() {
 func ParseRoute(value string) Route {
 	switch Route(value) {
 	case RouteSplash, RouteMainMenu, RouteMovieList, RouteMovieForm,
-		RouteMovieDetail, RouteStats, RouteSettings, RouteLogin, RouteRegister, RouteHelp:
+		RouteMovieDetail, RouteStats, RouteSettings, RouteLogin, RouteRegister, RouteHelp, RouteSyncConflicts:
 		return Route(value)
 	default:
 		return RouteSplash

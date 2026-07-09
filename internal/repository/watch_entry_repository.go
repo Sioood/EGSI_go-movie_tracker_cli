@@ -71,16 +71,17 @@ func (r *WatchEntryRepository) insertWatchEntry(ctx context.Context, entry domai
 	}
 
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO watch_entries (id, movie_id, watched, rating, rating_scale, review, watched_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO watch_entries (id, movie_id, watched, rating, rating_scale, review, watched_at, updated_by_device, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(movie_id) DO UPDATE SET
 			watched = excluded.watched,
 			rating = excluded.rating,
 			rating_scale = excluded.rating_scale,
 			review = excluded.review,
 			watched_at = excluded.watched_at,
+			updated_by_device = excluded.updated_by_device,
 			updated_at = excluded.updated_at
-	`, entry.ID, entry.MovieID, entry.Watched, entry.Rating, entry.RatingScale, entry.Review, watchedAt, formatTime(entry.UpdatedAt))
+	`, entry.ID, entry.MovieID, entry.Watched, entry.Rating, entry.RatingScale, entry.Review, watchedAt, entry.UpdatedByDevice, formatTime(entry.UpdatedAt))
 	if err != nil {
 		return domain.WatchEntry{}, false, fmt.Errorf("%w: sync upsert watch entry: %v", apperrors.ErrDB, err)
 	}
@@ -94,7 +95,7 @@ func (r *WatchEntryRepository) insertWatchEntry(ctx context.Context, entry domai
 
 func (r *WatchEntryRepository) ListAll(ctx context.Context) ([]domain.WatchEntry, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, movie_id, watched, rating, rating_scale, review, watched_at, updated_at
+		SELECT id, movie_id, watched, rating, rating_scale, review, watched_at, updated_by_device, updated_at
 		FROM watch_entries
 	`)
 	if err != nil {
@@ -118,7 +119,7 @@ func (r *WatchEntryRepository) ListAll(ctx context.Context) ([]domain.WatchEntry
 
 func (r *WatchEntryRepository) GetByMovieID(ctx context.Context, movieID string) (domain.WatchEntry, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, movie_id, watched, rating, rating_scale, review, watched_at, updated_at
+		SELECT id, movie_id, watched, rating, rating_scale, review, watched_at, updated_by_device, updated_at
 		FROM watch_entries
 		WHERE movie_id = ?
 	`, movieID)
@@ -170,6 +171,7 @@ func scanWatchEntry(scanner watchEntryScanner) (domain.WatchEntry, error) {
 		&entry.RatingScale,
 		&entry.Review,
 		&watchedAt,
+		&entry.UpdatedByDevice,
 		&updatedAt,
 	); err != nil {
 		return domain.WatchEntry{}, err

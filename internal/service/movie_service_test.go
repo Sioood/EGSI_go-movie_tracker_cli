@@ -38,6 +38,10 @@ func (fakeMovieStore) GetByID(ctx context.Context, id string) (domain.Movie, err
 	return domain.Movie{ID: id}, nil
 }
 
+func (fakeMovieStore) GetByExternalID(ctx context.Context, userID, externalID string) (domain.Movie, error) {
+	return domain.Movie{}, apperrors.ErrMovieNotFound
+}
+
 func (fakeMovieStore) ListByUser(ctx context.Context, userID string) ([]domain.Movie, error) {
 	return []domain.Movie{{UserID: userID}}, nil
 }

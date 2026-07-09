@@ -49,6 +49,7 @@ var helpSections = []HelpSection{
 		Title: "Détail film",
 		Shortcuts: []Shortcut{
 			{Keys: "Tab", Action: "champ suivant", Screens: []Route{RouteMovieForm, RouteMovieDetail, RouteSettings, RouteLogin, RouteRegister}},
+			{Keys: "ctrl+t", Action: "rechercher un film sur TMDB", Screens: []Route{RouteMovieForm}},
 			{Keys: "w", Action: "marquer vu aujourd'hui", Screens: []Route{RouteMovieDetail}},
 			{Keys: "u", Action: "marquer non vu", Screens: []Route{RouteMovieDetail}},
 		},
@@ -71,12 +72,15 @@ var helpSections = []HelpSection{
 			{Keys: "e", Action: "exporter config + état vers le serveur", Screens: []Route{RouteSettings}},
 			{Keys: "i", Action: "importer config + état depuis le serveur", Screens: []Route{RouteSettings}},
 			{Keys: "E", Action: "exporter config + état en local (JSON)", Screens: []Route{RouteSettings}},
+			{Keys: "j", Action: "exporter les films en JSON local", Screens: []Route{RouteSettings}},
+			{Keys: "J", Action: "exporter les films en CSV local", Screens: []Route{RouteSettings}},
 		},
 	},
 	{
 		Title: "Synchronisation",
 		Shortcuts: []Shortcut{
 			{Keys: "S", Action: "lancer une synchronisation manuelle"},
+			{Keys: "K", Action: "résoudre les conflits de synchronisation"},
 		},
 	},
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/tui/messages"
 )
 
@@ -14,22 +15,28 @@ const syncInterval = 30 * time.Second
 type SyncStatus string
 
 const (
-	SyncStatusIdle    SyncStatus = "idle"
-	SyncStatusSyncing SyncStatus = "syncing"
-	SyncStatusSynced  SyncStatus = "synced"
-	SyncStatusPending SyncStatus = "pending"
-	SyncStatusError   SyncStatus = "error"
+	SyncStatusIdle      SyncStatus = "idle"
+	SyncStatusSyncing   SyncStatus = "syncing"
+	SyncStatusSynced    SyncStatus = "synced"
+	SyncStatusPending   SyncStatus = "pending"
+	SyncStatusError     SyncStatus = "error"
+	SyncStatusConflicts SyncStatus = "conflicts"
 )
 
 // SyncResult is returned by a completed sync run.
 type SyncResult struct {
-	PendingCount int
+	PendingCount  int
+	ConflictCount int
 }
 
 // SyncRunner performs background synchronization.
 type SyncRunner interface {
 	Run(ctx context.Context) (SyncResult, error)
 	PendingCount(ctx context.Context) (int, error)
+	ConflictCount(ctx context.Context) (int, error)
+	ListConflicts(ctx context.Context) ([]domain.SyncConflict, error)
+	ResolveConflict(ctx context.Context, id, choice string) error
+	GetDeviceName(ctx context.Context, deviceID string) (string, error)
 }
 
 // SyncRequestMsg asks the model to start a sync when online.
@@ -103,8 +110,11 @@ func (m Model) handleSyncResult(msg syncResultMsg) (tea.Model, tea.Cmd) {
 
 	m.syncError = ""
 	m.pendingCount = msg.result.PendingCount
+	m.conflictCount = msg.result.ConflictCount
 	m.lastSyncAt = time.Now()
-	if m.pendingCount > 0 {
+	if m.conflictCount > 0 {
+		m.syncStatus = SyncStatusConflicts
+	} else if m.pendingCount > 0 {
 		m.syncStatus = SyncStatusPending
 	} else {
 		m.syncStatus = SyncStatusSynced
@@ -121,9 +131,10 @@ func (m *Model) refreshPendingCount() {
 	count, err := m.syncRunner.PendingCount(context.Background())
 	if err == nil {
 		m.pendingCount = count
-		if count > 0 && m.syncStatus != SyncStatusSyncing && m.syncStatus != SyncStatusError {
-			m.syncStatus = SyncStatusPending
-		}
+	}
+	m.refreshConflictCount()
+	if m.pendingCount > 0 && m.syncStatus != SyncStatusSyncing && m.syncStatus != SyncStatusError && m.conflictCount == 0 {
+		m.syncStatus = SyncStatusPending
 	}
 }
 

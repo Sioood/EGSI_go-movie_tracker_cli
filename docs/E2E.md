@@ -250,6 +250,29 @@ curl -s http://localhost:8080/health
 
 ---
 
+## 8. Bonus A / B / C
+
+### 8.1 Export films JSON / CSV
+
+- **Étapes** : Paramètres → `j` puis `J`
+- **Résultat** : Fichiers créés dans `~/.config/movietracker/exports/`
+- **Statut** : [ ]
+
+### 8.2 Recherche TMDB à l'ajout
+
+- **Prérequis** : `TMDB_API_KEY` sur le serveur (ou variable d'environnement locale)
+- **Étapes** : Films → `a` → `ctrl+t` → rechercher → sélectionner → ajouter
+- **Résultat** : `external_id` au format `tmdb:12345` visible dans le détail
+- **Statut** : [ ]
+
+### 8.3 Résolution de conflits multi-appareils
+
+- **Étapes** : Deux CLI avec `device_id` différents → modifier le même film hors ligne → sync → `K`
+- **Résultat** : Écran conflits, choix local/distant, re-sync sans perte silencieuse
+- **Statut** : [ ]
+
+---
+
 ## Validation finale
 
 ```bash

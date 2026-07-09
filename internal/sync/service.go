@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -29,13 +30,14 @@ type TokenRefresher interface {
 
 // Service orchestrates push/pull sync between local SQLite and the server.
 type Service struct {
-	movies     *service.MovieService
-	syncRepo   *repository.SyncRepository
-	syncClient *client.SyncClient
-	auth       TokenRefresher
-	getSession func() SessionAccess
-	isOnline   func() bool
-	onTokens   func(access, refresh string)
+	movies      *service.MovieService
+	syncRepo    *repository.SyncRepository
+	syncClient  *client.SyncClient
+	auth        TokenRefresher
+	getSession  func() SessionAccess
+	getDeviceID func() string
+	isOnline    func() bool
+	onTokens    func(access, refresh string)
 }
 
 // NewService creates a sync orchestrator.
@@ -45,17 +47,19 @@ func NewService(
 	syncClient *client.SyncClient,
 	auth TokenRefresher,
 	getSession func() SessionAccess,
+	getDeviceID func() string,
 	isOnline func() bool,
 	onTokens func(access, refresh string),
 ) *Service {
 	return &Service{
-		movies:     movies,
-		syncRepo:   syncRepo,
-		syncClient: syncClient,
-		auth:       auth,
-		getSession: getSession,
-		isOnline:   isOnline,
-		onTokens:   onTokens,
+		movies:      movies,
+		syncRepo:    syncRepo,
+		syncClient:  syncClient,
+		auth:        auth,
+		getSession:  getSession,
+		getDeviceID: getDeviceID,
+		isOnline:    isOnline,
+		onTokens:    onTokens,
 	}
 }
 
@@ -67,6 +71,7 @@ type Result struct {
 	PulledWatchEntries int
 	DeletedMovies      int
 	PendingCount       int
+	ConflictCount      int
 }
 
 // Run performs push then pull when online and authenticated.
@@ -128,6 +133,14 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 			return err
 		}
 
+		pullMeta, err := s.syncRepo.GetMetadata(ctx)
+		if err != nil {
+			return err
+		}
+		if remote.SourceDeviceID != "" {
+			_ = s.syncRepo.UpsertDevice(ctx, remote.SourceDeviceID, "")
+		}
+
 		for _, movie := range remote.Movies {
 			pendingDelete, err := s.syncRepo.HasPendingDelete(ctx, movie.ID)
 			if err != nil {
@@ -136,7 +149,10 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 			if pendingDelete {
 				continue
 			}
-			applied, err := s.syncRepo.ApplyMovieLWW(ctx, movie)
+			if err := s.trackDevice(ctx, movie.UpdatedByDevice); err != nil {
+				return err
+			}
+			applied, err := s.applyRemoteMovie(ctx, pullMeta, movie)
 			if err != nil {
 				return err
 			}
@@ -153,7 +169,10 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 			if pendingDelete {
 				continue
 			}
-			applied, err := s.syncRepo.ApplyWatchEntryLWW(ctx, entry)
+			if err := s.trackDevice(ctx, entry.UpdatedByDevice); err != nil {
+				return err
+			}
+			applied, err := s.applyRemoteWatchEntry(ctx, pullMeta, entry)
 			if err != nil {
 				return err
 			}
@@ -185,11 +204,18 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 			return err
 		}
 		result.PendingCount = pending
+		conflicts, err := s.syncRepo.ConflictCount(ctx)
+		if err != nil {
+			return err
+		}
+		result.ConflictCount = conflicts
 		return nil
 	})
 	if err != nil {
 		pending, _ := s.syncRepo.PendingCount(ctx)
 		result.PendingCount = pending
+		conflicts, _ := s.syncRepo.ConflictCount(ctx)
+		result.ConflictCount = conflicts
 		return result, err
 	}
 	return result, nil
@@ -198,6 +224,26 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 // PendingCount returns the number of local changes waiting to be pushed.
 func (s *Service) PendingCount(ctx context.Context) (int, error) {
 	return s.syncRepo.PendingCount(ctx)
+}
+
+// ConflictCount returns unresolved sync conflicts.
+func (s *Service) ConflictCount(ctx context.Context) (int, error) {
+	return s.syncRepo.ConflictCount(ctx)
+}
+
+// ListConflicts returns unresolved sync conflicts.
+func (s *Service) ListConflicts(ctx context.Context) ([]domain.SyncConflict, error) {
+	return s.syncRepo.ListConflicts(ctx)
+}
+
+// ResolveConflict applies the chosen version for a conflict.
+func (s *Service) ResolveConflict(ctx context.Context, id, choice string) error {
+	return s.syncRepo.ResolveConflict(ctx, id, choice)
+}
+
+// GetDeviceName returns a friendly device label.
+func (s *Service) GetDeviceName(ctx context.Context, deviceID string) (string, error) {
+	return s.syncRepo.GetDeviceName(ctx, deviceID)
 }
 
 // UserID returns the effective local user id for reads and writes.
@@ -260,6 +306,7 @@ func (s *Service) buildPushPayload(ctx context.Context, serverUserID string) (cl
 			continue
 		}
 		movie.UserID = serverUserID
+		movie.UpdatedByDevice = s.deviceID()
 		movies = append(movies, movie)
 	}
 
@@ -269,6 +316,7 @@ func (s *Service) buildPushPayload(ctx context.Context, serverUserID string) (cl
 		if err != nil {
 			continue
 		}
+		entry.UpdatedByDevice = s.deviceID()
 		entries = append(entries, entry)
 	}
 
@@ -276,6 +324,7 @@ func (s *Service) buildPushPayload(ctx context.Context, serverUserID string) (cl
 		for _, movie := range movies {
 			entry, err := s.movies.GetWatchEntry(ctx, movie.ID)
 			if err == nil {
+				entry.UpdatedByDevice = s.deviceID()
 				entries = append(entries, entry)
 			}
 		}
@@ -290,6 +339,7 @@ func (s *Service) buildPushPayload(ctx context.Context, serverUserID string) (cl
 		Movies:          movies,
 		WatchEntries:    entries,
 		DeletedMovieIDs: deletedIDs,
+		SourceDeviceID:  s.deviceID(),
 		SyncedAt:        time.Now().UTC(),
 	}, pushedIDs, deletedIDs, nil
 }
@@ -325,6 +375,128 @@ func (s *Service) refreshAccess(ctx context.Context, session *SessionAccess) (st
 		s.onTokens(newAccess, newRefresh)
 	}
 	return newAccess, nil
+}
+
+func (s *Service) deviceID() string {
+	if s.getDeviceID != nil {
+		return s.getDeviceID()
+	}
+	return ""
+}
+
+func (s *Service) trackDevice(ctx context.Context, deviceID string) error {
+	if deviceID == "" {
+		return nil
+	}
+	return s.syncRepo.UpsertDevice(ctx, deviceID, "")
+}
+
+func (s *Service) applyRemoteMovie(ctx context.Context, meta repository.SyncMetadata, remote domain.Movie) (bool, error) {
+	open, err := s.syncRepo.HasOpenConflict(ctx, domain.SyncEntityMovie, remote.ID)
+	if err != nil || open {
+		return false, err
+	}
+
+	local, err := s.movies.GetMovie(ctx, remote.ID)
+	if errors.Is(err, apperrors.ErrMovieNotFound) {
+		return s.syncRepo.ApplyMovieLWW(ctx, remote)
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if !moviesConflict(local, remote) {
+		return s.syncRepo.ApplyMovieLWW(ctx, remote)
+	}
+
+	if shouldRecordConflict(ctx, s.syncRepo, meta, domain.SyncEntityMovie, remote.ID, local.UpdatedAt, remote.UpdatedAt) {
+		return false, s.recordMovieConflict(ctx, local, remote)
+	}
+	return s.syncRepo.ApplyMovieLWW(ctx, remote)
+}
+
+func (s *Service) applyRemoteWatchEntry(ctx context.Context, meta repository.SyncMetadata, remote domain.WatchEntry) (bool, error) {
+	open, err := s.syncRepo.HasOpenConflict(ctx, domain.SyncEntityWatchEntry, remote.MovieID)
+	if err != nil || open {
+		return false, err
+	}
+
+	local, err := s.movies.GetWatchEntry(ctx, remote.MovieID)
+	if errors.Is(err, apperrors.ErrWatchEntryNotFound) {
+		return s.syncRepo.ApplyWatchEntryLWW(ctx, remote)
+	}
+	if err != nil {
+		return false, err
+	}
+
+	if !watchEntriesConflict(local, remote) {
+		return s.syncRepo.ApplyWatchEntryLWW(ctx, remote)
+	}
+
+	if shouldRecordConflict(ctx, s.syncRepo, meta, domain.SyncEntityWatchEntry, remote.MovieID, local.UpdatedAt, remote.UpdatedAt) {
+		return false, s.recordWatchEntryConflict(ctx, local, remote)
+	}
+	return s.syncRepo.ApplyWatchEntryLWW(ctx, remote)
+}
+
+func shouldRecordConflict(
+	ctx context.Context,
+	syncRepo *repository.SyncRepository,
+	meta repository.SyncMetadata,
+	entityType, entityID string,
+	localUpdated, remoteUpdated time.Time,
+) bool {
+	hasPending, err := syncRepo.HasPending(ctx, entityType, entityID)
+	if err != nil {
+		return false
+	}
+	if hasPending {
+		return true
+	}
+	if meta.LastSyncAt == nil {
+		return false
+	}
+	return localUpdated.After(*meta.LastSyncAt) && remoteUpdated.After(*meta.LastSyncAt)
+}
+
+func (s *Service) recordMovieConflict(ctx context.Context, local, remote domain.Movie) error {
+	localJSON, err := json.Marshal(local)
+	if err != nil {
+		return err
+	}
+	remoteJSON, err := json.Marshal(remote)
+	if err != nil {
+		return err
+	}
+	return s.syncRepo.RecordConflict(ctx, domain.SyncConflict{
+		EntityType:     domain.SyncEntityMovie,
+		EntityID:       local.ID,
+		LocalJSON:      string(localJSON),
+		RemoteJSON:     string(remoteJSON),
+		LocalDeviceID:  local.UpdatedByDevice,
+		RemoteDeviceID: remote.UpdatedByDevice,
+		DetectedAt:     time.Now().UTC(),
+	})
+}
+
+func (s *Service) recordWatchEntryConflict(ctx context.Context, local, remote domain.WatchEntry) error {
+	localJSON, err := json.Marshal(local)
+	if err != nil {
+		return err
+	}
+	remoteJSON, err := json.Marshal(remote)
+	if err != nil {
+		return err
+	}
+	return s.syncRepo.RecordConflict(ctx, domain.SyncConflict{
+		EntityType:     domain.SyncEntityWatchEntry,
+		EntityID:       local.MovieID,
+		LocalJSON:      string(localJSON),
+		RemoteJSON:     string(remoteJSON),
+		LocalDeviceID:  local.UpdatedByDevice,
+		RemoteDeviceID: remote.UpdatedByDevice,
+		DetectedAt:     time.Now().UTC(),
+	})
 }
 
 // ErrOffline indicates sync was skipped because the client is offline.

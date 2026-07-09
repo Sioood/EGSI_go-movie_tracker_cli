@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -15,9 +16,11 @@ import (
 	"github.com/movietracker/movie-tracker/internal/repository"
 	"github.com/movietracker/movie-tracker/internal/service"
 	appsync "github.com/movietracker/movie-tracker/internal/sync"
+	"github.com/movietracker/movie-tracker/internal/tmdb"
 	"github.com/movietracker/movie-tracker/internal/tui"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/google/uuid"
 )
 
 // authAdapter bridges internal/client.AuthClient to tui.AuthClient.
@@ -71,11 +74,27 @@ type syncRunnerAdapter struct {
 
 func (a *syncRunnerAdapter) Run(ctx context.Context) (tui.SyncResult, error) {
 	result, err := a.Service.Run(ctx)
-	return tui.SyncResult{PendingCount: result.PendingCount}, err
+	return tui.SyncResult{PendingCount: result.PendingCount, ConflictCount: result.ConflictCount}, err
 }
 
 func (a *syncRunnerAdapter) PendingCount(ctx context.Context) (int, error) {
 	return a.Service.PendingCount(ctx)
+}
+
+func (a *syncRunnerAdapter) ConflictCount(ctx context.Context) (int, error) {
+	return a.Service.ConflictCount(ctx)
+}
+
+func (a *syncRunnerAdapter) ListConflicts(ctx context.Context) ([]domain.SyncConflict, error) {
+	return a.Service.ListConflicts(ctx)
+}
+
+func (a *syncRunnerAdapter) ResolveConflict(ctx context.Context, id, choice string) error {
+	return a.Service.ResolveConflict(ctx, id, choice)
+}
+
+func (a *syncRunnerAdapter) GetDeviceName(ctx context.Context, deviceID string) (string, error) {
+	return a.Service.GetDeviceName(ctx, deviceID)
 }
 
 type runtimeState struct {
@@ -103,6 +122,15 @@ func main() {
 		logger.Error("load config", "err", err)
 		os.Exit(1)
 	}
+	appCfg = ensureDeviceConfig(appCfg)
+	if err := config.SaveConfig(appCfg); err != nil {
+		logger.Warn("save device config", "err", err)
+	}
+
+	tmdbAPIKey := os.Getenv("TMDB_API_KEY")
+	if appCfg.TMDBAPIKey != "" {
+		tmdbAPIKey = appCfg.TMDBAPIKey
+	}
 
 	appState, err := config.LoadState()
 	if err != nil {
@@ -118,6 +146,8 @@ func main() {
 
 	authClient := client.NewAuthClient(appCfg.ServerURL)
 	backupClient := client.NewBackupClient(appCfg.ServerURL)
+	externalClient := client.NewExternalClient(appCfg.ServerURL)
+	directTMDB := tmdb.NewClient(tmdbAPIKey)
 	sessionState := tuiSessionFromConfig(sess)
 
 	if !appCfg.OfflineMode && sess.RefreshToken != "" {
@@ -156,9 +186,11 @@ func main() {
 	watchEntryRepository := repository.NewWatchEntryRepository(db)
 	statsRepository := repository.NewStatsRepository(db)
 	syncRepository := repository.NewSyncRepository(db, movieRepository, watchEntryRepository)
+	tmdbCacheRepository := repository.NewTMDBCacheRepository(db)
 
 	movieService := service.NewMovieService(movieRepository, watchEntryRepository)
 	statsService := service.NewStatsService(statsRepository)
+	exportService := service.NewExportService(movieService)
 	local := &appsync.LocalService{MovieService: movieService, StatsService: statsService}
 
 	runtime := &runtimeState{}
@@ -178,6 +210,9 @@ func main() {
 				RefreshToken: current.RefreshToken,
 				ServerUserID: current.ServerUserID,
 			}
+		},
+		func() string {
+			return appCfg.DeviceID
 		},
 		func() bool {
 			current := runtime.currentSession()
@@ -205,6 +240,9 @@ func main() {
 		func(ctx context.Context) (string, error) {
 			return syncService.UserID(ctx)
 		},
+		func() string {
+			return appCfg.DeviceID
+		},
 		func() bool {
 			current := runtime.currentSession()
 			return !runtime.offline.Load() && current.Authenticated
@@ -212,11 +250,26 @@ func main() {
 		bridge.Request,
 	)
 
+	tmdbSearch := service.NewTMDBSearchService(
+		externalClient,
+		directTMDB,
+		tmdbCacheRepository,
+		func() string {
+			return runtime.currentSession().AccessToken
+		},
+		func() bool {
+			current := runtime.currentSession()
+			return !runtime.offline.Load() && current.Authenticated
+		},
+	)
+
 	initialState := tui.AppState{
 		Config: tui.Config{
 			Theme:       appCfg.Theme,
 			ServerURL:   appCfg.ServerURL,
 			OfflineMode: appCfg.OfflineMode,
+			DeviceID:    appCfg.DeviceID,
+			DeviceName:  appCfg.DeviceName,
 		},
 		Session: sessionState,
 	}
@@ -228,6 +281,7 @@ func main() {
 		Auth:          &authAdapter{authClient},
 		Backup:        &backupAdapter{backupClient},
 		SyncRunner:    &syncRunnerAdapter{syncService},
+		TMDBSearch:    tmdbSearch,
 		InitialRoute:  tui.ParseRoute(appState.LastRoute),
 		InitialFilter: domainMovieFilter(appState.Filter),
 		InitialSort:   domainMovieSort(appState.Sort),
@@ -244,10 +298,13 @@ func main() {
 			authClient.SetBaseURL(cfg.ServerURL)
 			syncClient.SetBaseURL(cfg.ServerURL)
 			backupClient.SetBaseURL(cfg.ServerURL)
+			externalClient.SetBaseURL(cfg.ServerURL)
 			return config.SaveConfig(config.Config{
 				Theme:       cfg.Theme,
 				ServerURL:   cfg.ServerURL,
 				OfflineMode: cfg.OfflineMode,
+				DeviceID:    cfg.DeviceID,
+				DeviceName:  cfg.DeviceName,
 			})
 		},
 		SaveState: func(state config.State) error {
@@ -255,6 +312,20 @@ func main() {
 		},
 		ExportLocal: func(snapshot tui.BackupSnapshot) (string, error) {
 			return config.ExportLocal(snapshot.Config, snapshot.State)
+		},
+		ExportMovies: func(format string) (string, error) {
+			userID, err := syncService.UserID(context.Background())
+			if err != nil {
+				userID = appsync.LocalUserID
+			}
+			switch format {
+			case "json":
+				return exportService.ExportJSON(context.Background(), userID)
+			case "csv":
+				return exportService.ExportCSV(context.Background(), userID)
+			default:
+				return "", fmt.Errorf("format d'export inconnu: %s", format)
+			}
 		},
 		SaveSession: func(state tui.SessionState) error {
 			runtime.session.Store(state)
@@ -305,4 +376,11 @@ func domainMovieSort(value string) domain.MovieSort {
 	default:
 		return domain.MovieSortTitle
 	}
+}
+
+func ensureDeviceConfig(cfg config.Config) config.Config {
+	if cfg.DeviceID == "" {
+		cfg.DeviceID = uuid.NewString()
+	}
+	return cfg
 }

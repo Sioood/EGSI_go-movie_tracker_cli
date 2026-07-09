@@ -22,6 +22,9 @@ type Config struct {
 	Theme       string `json:"theme"`
 	ServerURL   string `json:"server_url"`
 	OfflineMode bool   `json:"offline_mode"`
+	TMDBAPIKey  string `json:"tmdb_api_key,omitempty"`
+	DeviceID    string `json:"device_id,omitempty"`
+	DeviceName  string `json:"device_name,omitempty"`
 }
 
 // State holds persisted application UI state (no movie data).

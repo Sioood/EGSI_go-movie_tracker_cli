@@ -58,7 +58,23 @@ Au premier lancement :
 
 Depuis le menu : **Films**, **Statistiques**, **Paramètres**, **Connexion**, **Aide** (`?`).
 
-Raccourcis principaux : `/` recherche, `f`/`t`/`c` filtres, `a` ajouter, `S` synchroniser, `q` quitter.
+Raccourcis principaux : `/` recherche, `f`/`t`/`c` filtres, `a` ajouter, `ctrl+t` recherche TMDB, `S` synchroniser, `K` conflits, `q` quitter.
+
+### Fonctionnalités bonus
+
+| Bonus | Raccourcis | Description |
+|-------|------------|-------------|
+| **Export films** | `j` / `J` dans Paramètres | Export JSON / CSV vers `~/.config/movietracker/exports/` |
+| **TMDB** | `ctrl+t` dans le formulaire d'ajout | Recherche via proxy serveur `GET /api/v1/search/external` (ou `TMDB_API_KEY` locale) |
+| **Sync avancée** | `K` | Résolution manuelle des conflits multi-appareils |
+
+Chaque appareil reçoit un `device_id` persistant dans `config.json`. Les conflits apparaissent dans le footer (`sync · N conflit(s)`).
+
+### Scénarios E2E bonus
+
+1. **Export** : Paramètres → `j` → vérifier `~/.config/movietracker/exports/movies-*.json` ; `J` pour le CSV.
+2. **TMDB** : Ajouter un film → `ctrl+t` → chercher un titre → sélectionner → vérifier la référence externe `tmdb:…` dans le détail.
+3. **Conflits** : deux instances CLI avec des `device_id` différents → modifier le même film hors ligne → sync → `K` → choisir local/distant → re-sync.
 
 ## Serveur API
 
@@ -66,6 +82,7 @@ Raccourcis principaux : `/` recherche, `f`/`t`/`c` filtres, `a` ajouter, `S` syn
 
 ```bash
 export JWT_SECRET="votre-secret-long-et-aleatoire"
+export TMDB_API_KEY="votre-token-tmdb"   # optionnel, active GET /api/v1/search/external
 make run-server
 ```
 
@@ -136,8 +153,9 @@ Fiche soutenance : [docs/SOUTENANCE.md](docs/SOUTENANCE.md)
 cmd/cli/              # Binaire TUI
 cmd/server/           # Binaire API
 internal/config/      # Config JSON XDG (~/.config/movietracker/)
-internal/client/      # Client HTTP auth + sync + backup
-internal/sync/        # Service sync hybride LWW
+internal/client/      # Client HTTP auth + sync + backup + TMDB proxy
+internal/sync/        # Service sync hybride LWW + conflits
+internal/tmdb/        # Client TMDB
 internal/domain/      # Entités métier
 internal/database/    # Migrations SQLite (goose)
 internal/repository/  # Accès données

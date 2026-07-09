@@ -11,24 +11,26 @@ type User struct {
 }
 
 type Movie struct {
-	ID         string    `json:"id"`
-	UserID     string    `json:"user_id"`
-	Title      string    `json:"title"`
-	Year       int       `json:"year"`
-	ExternalID string    `json:"external_id"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	Title           string    `json:"title"`
+	Year            int       `json:"year"`
+	ExternalID      string    `json:"external_id"`
+	UpdatedByDevice string    `json:"updated_by_device,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type WatchEntry struct {
-	ID          string     `json:"id"`
-	MovieID     string     `json:"movie_id"`
-	Watched     bool       `json:"watched"`
-	Rating      *float64   `json:"rating"`
-	RatingScale int        `json:"rating_scale"`
-	Review      string     `json:"review"`
-	WatchedAt   *time.Time `json:"watched_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID              string     `json:"id"`
+	MovieID         string     `json:"movie_id"`
+	Watched         bool       `json:"watched"`
+	Rating          *float64   `json:"rating"`
+	RatingScale     int        `json:"rating_scale"`
+	Review          string     `json:"review"`
+	WatchedAt       *time.Time `json:"watched_at"`
+	UpdatedByDevice string     `json:"updated_by_device,omitempty"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 type MovieFilter string
@@ -76,3 +78,22 @@ type Stats struct {
 	WorstMovies   []MovieRating `json:"worst_movies"`
 	ByMonth       []MonthBucket `json:"by_month"`
 }
+
+type SyncConflict struct {
+	ID             string    `json:"id"`
+	EntityType     string    `json:"entity_type"`
+	EntityID       string    `json:"entity_id"`
+	LocalJSON      string    `json:"local_json"`
+	RemoteJSON     string    `json:"remote_json"`
+	LocalDeviceID  string    `json:"local_device_id"`
+	RemoteDeviceID string    `json:"remote_device_id"`
+	DetectedAt     time.Time `json:"detected_at"`
+	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
+}
+
+const (
+	SyncEntityMovie      = "movie"
+	SyncEntityWatchEntry = "watch_entry"
+	ConflictChoiceLocal  = "local"
+	ConflictChoiceRemote = "remote"
+)

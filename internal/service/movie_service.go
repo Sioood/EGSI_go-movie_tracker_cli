@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 type MovieStore interface {
 	Create(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	GetByID(ctx context.Context, id string) (domain.Movie, error)
+	GetByExternalID(ctx context.Context, userID, externalID string) (domain.Movie, error)
 	ListByUser(ctx context.Context, userID string) ([]domain.Movie, error)
 	Search(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error)
 	Update(ctx context.Context, movie domain.Movie) (domain.Movie, error)
@@ -42,6 +44,14 @@ func (s *MovieService) CreateMovie(ctx context.Context, movie domain.Movie) (dom
 	movie.Title = strings.TrimSpace(movie.Title)
 	if err := validateMovie(movie); err != nil {
 		return domain.Movie{}, err
+	}
+
+	if movie.ExternalID != "" {
+		if _, err := s.movies.GetByExternalID(ctx, movie.UserID, movie.ExternalID); err == nil {
+			return domain.Movie{}, fmt.Errorf("%w: ce film TMDB est déjà dans la collection", apperrors.ErrValidation)
+		} else if !errors.Is(err, apperrors.ErrMovieNotFound) {
+			return domain.Movie{}, err
+		}
 	}
 
 	return s.movies.Create(ctx, movie)

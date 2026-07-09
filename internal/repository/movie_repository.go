@@ -32,9 +32,9 @@ func (r *MovieRepository) Create(ctx context.Context, movie domain.Movie) (domai
 	movie.UpdatedAt = now
 
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO movies (id, user_id, title, year, external_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
+		INSERT INTO movies (id, user_id, title, year, external_id, updated_by_device, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
 	if err != nil {
 		return domain.Movie{}, fmt.Errorf("%w: create movie: %v", apperrors.ErrDB, err)
 	}
@@ -44,7 +44,7 @@ func (r *MovieRepository) Create(ctx context.Context, movie domain.Movie) (domai
 
 func (r *MovieRepository) GetByID(ctx context.Context, id string) (domain.Movie, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.created_at, movies.updated_at
+		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.updated_by_device, movies.created_at, movies.updated_at
 		FROM movies
 		WHERE id = ?
 	`, id)
@@ -57,6 +57,28 @@ func (r *MovieRepository) GetByID(ctx context.Context, id string) (domain.Movie,
 		return domain.Movie{}, fmt.Errorf("%w: get movie: %v", apperrors.ErrDB, err)
 	}
 
+	return movie, nil
+}
+
+func (r *MovieRepository) GetByExternalID(ctx context.Context, userID, externalID string) (domain.Movie, error) {
+	externalID = strings.TrimSpace(externalID)
+	if externalID == "" {
+		return domain.Movie{}, fmt.Errorf("%w: external id is required", apperrors.ErrValidation)
+	}
+
+	row := r.db.QueryRowContext(ctx, `
+		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.updated_by_device, movies.created_at, movies.updated_at
+		FROM movies
+		WHERE movies.user_id = ? AND movies.external_id = ?
+	`, userID, externalID)
+
+	movie, err := scanMovie(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Movie{}, fmt.Errorf("%w: external id %s", apperrors.ErrMovieNotFound, externalID)
+	}
+	if err != nil {
+		return domain.Movie{}, fmt.Errorf("%w: get movie by external id: %v", apperrors.ErrDB, err)
+	}
 	return movie, nil
 }
 
@@ -73,7 +95,7 @@ func (r *MovieRepository) Search(ctx context.Context, params domain.MovieSearchP
 	}
 
 	query := `
-		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.created_at, movies.updated_at
+		SELECT movies.id, movies.user_id, movies.title, movies.year, movies.external_id, movies.updated_by_device, movies.created_at, movies.updated_at
 		FROM movies
 		LEFT JOIN watch_entries ON watch_entries.movie_id = movies.id
 		WHERE movies.user_id = ?
@@ -143,9 +165,9 @@ func (r *MovieRepository) Update(ctx context.Context, movie domain.Movie) (domai
 
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE movies
-		SET user_id = ?, title = ?, year = ?, external_id = ?, updated_at = ?
+		SET user_id = ?, title = ?, year = ?, external_id = ?, updated_by_device = ?, updated_at = ?
 		WHERE id = ?
-	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, formatTime(movie.UpdatedAt), movie.ID)
+	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.UpdatedAt), movie.ID)
 	if err != nil {
 		return domain.Movie{}, fmt.Errorf("%w: update movie: %v", apperrors.ErrDB, err)
 	}
@@ -195,9 +217,9 @@ func (r *MovieRepository) SyncUpsert(ctx context.Context, movie domain.Movie) (d
 		}
 
 		_, err := r.db.ExecContext(ctx, `
-			INSERT INTO movies (id, user_id, title, year, external_id, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
+			INSERT INTO movies (id, user_id, title, year, external_id, updated_by_device, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
 		if err != nil {
 			return domain.Movie{}, false, fmt.Errorf("%w: sync insert movie: %v", apperrors.ErrDB, err)
 		}
@@ -213,9 +235,9 @@ func (r *MovieRepository) SyncUpsert(ctx context.Context, movie domain.Movie) (d
 
 	_, err = r.db.ExecContext(ctx, `
 		UPDATE movies
-		SET user_id = ?, title = ?, year = ?, external_id = ?, updated_at = ?
+		SET user_id = ?, title = ?, year = ?, external_id = ?, updated_by_device = ?, updated_at = ?
 		WHERE id = ?
-	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, formatTime(movie.UpdatedAt), movie.ID)
+	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.UpdatedAt), movie.ID)
 	if err != nil {
 		return domain.Movie{}, false, fmt.Errorf("%w: sync update movie: %v", apperrors.ErrDB, err)
 	}
@@ -242,6 +264,7 @@ func scanMovie(scanner movieScanner) (domain.Movie, error) {
 		&movie.Title,
 		&movie.Year,
 		&movie.ExternalID,
+		&movie.UpdatedByDevice,
 		&createdAt,
 		&updatedAt,
 	); err != nil {

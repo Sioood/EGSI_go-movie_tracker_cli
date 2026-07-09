@@ -12,7 +12,8 @@ const (
 	RouteSettings    Route = "settings"
 	RouteLogin       Route = "login"
 	RouteRegister    Route = "register"
-	RouteHelp        Route = "help"
+	RouteHelp          Route = "help"
+	RouteSyncConflicts Route = "sync_conflicts"
 )
 
 const localUserID = "local-user"
@@ -21,6 +22,8 @@ type Config struct {
 	Theme       string
 	ServerURL   string
 	OfflineMode bool
+	DeviceID    string
+	DeviceName  string
 }
 
 type SessionState struct {

@@ -47,7 +47,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 
 	// Best movies (top 3 by rating)
 	bestRows, err := r.db.QueryContext(ctx, `
-		SELECT m.id, m.user_id, m.title, m.year, m.external_id, m.created_at, m.updated_at, w.rating
+		SELECT m.id, m.user_id, m.title, m.year, m.external_id, m.updated_by_device, m.created_at, m.updated_at, w.rating
 		FROM movies m
 		JOIN watch_entries w ON w.movie_id = m.id
 		WHERE m.user_id = ? AND w.rating IS NOT NULL
@@ -65,7 +65,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 
 	// Worst movies (bottom 3 by rating)
 	worstRows, err := r.db.QueryContext(ctx, `
-		SELECT m.id, m.user_id, m.title, m.year, m.external_id, m.created_at, m.updated_at, w.rating
+		SELECT m.id, m.user_id, m.title, m.year, m.external_id, m.updated_by_device, m.created_at, m.updated_at, w.rating
 		FROM movies m
 		JOIN watch_entries w ON w.movie_id = m.id
 		WHERE m.user_id = ? AND w.rating IS NOT NULL
@@ -127,7 +127,7 @@ func scanMovieRatings(rows *sql.Rows) ([]domain.MovieRating, error) {
 		var createdAt, updatedAt string
 		if err := rows.Scan(
 			&mr.Movie.ID, &mr.Movie.UserID, &mr.Movie.Title, &mr.Movie.Year,
-			&mr.Movie.ExternalID, &createdAt, &updatedAt, &mr.Rating,
+			&mr.Movie.ExternalID, &mr.Movie.UpdatedByDevice, &createdAt, &updatedAt, &mr.Rating,
 		); err != nil {
 			return nil, fmt.Errorf("%w: scan movie rating: %v", apperrors.ErrDB, err)
 		}

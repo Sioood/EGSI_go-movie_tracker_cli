@@ -36,23 +36,25 @@ type SyncTrigger interface {
 
 // HybridClient writes locally, marks pending changes, and optionally triggers sync.
 type HybridClient struct {
-	local   MovieReader
-	stats   StatsReader
-	sync    SyncTrigger
-	userID  func(context.Context) (string, error)
-	online  func() bool
-	onSync  func()
+	local    MovieReader
+	stats    StatsReader
+	sync     SyncTrigger
+	userID      func(context.Context) (string, error)
+	getDeviceID func() string
+	online      func() bool
+	onSync      func()
 }
 
 // NewHybridClient creates a local-first MovieClient with sync side effects.
-func NewHybridClient(local MovieReader, stats StatsReader, syncSvc SyncTrigger, userID func(context.Context) (string, error), online func() bool, onSync func()) *HybridClient {
+func NewHybridClient(local MovieReader, stats StatsReader, syncSvc SyncTrigger, userID func(context.Context) (string, error), getDeviceID func() string, online func() bool, onSync func()) *HybridClient {
 	return &HybridClient{
-		local:  local,
-		stats:  stats,
-		sync:   syncSvc,
-		userID: userID,
-		online: online,
-		onSync: onSync,
+		local:       local,
+		stats:       stats,
+		sync:        syncSvc,
+		userID:      userID,
+		getDeviceID: getDeviceID,
+		online:      online,
+		onSync:      onSync,
 	}
 }
 
@@ -61,6 +63,13 @@ func (h *HybridClient) resolveUserID(ctx context.Context) (string, error) {
 		return h.userID(ctx)
 	}
 	return LocalUserID, nil
+}
+
+func (h *HybridClient) currentDeviceID() string {
+	if h.getDeviceID != nil {
+		return h.getDeviceID()
+	}
+	return ""
 }
 
 func (h *HybridClient) maybeSync() {
@@ -75,6 +84,7 @@ func (h *HybridClient) CreateMovie(ctx context.Context, movie domain.Movie) (dom
 		return domain.Movie{}, err
 	}
 	movie.UserID = userID
+	movie.UpdatedByDevice = h.currentDeviceID()
 	created, err := h.local.CreateMovie(ctx, movie)
 	if err != nil {
 		return domain.Movie{}, err
@@ -97,6 +107,7 @@ func (h *HybridClient) SearchMovies(ctx context.Context, params domain.MovieSear
 }
 
 func (h *HybridClient) UpdateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error) {
+	movie.UpdatedByDevice = h.currentDeviceID()
 	updated, err := h.local.UpdateMovie(ctx, movie)
 	if err != nil {
 		return domain.Movie{}, err
@@ -118,6 +129,7 @@ func (h *HybridClient) DeleteMovie(ctx context.Context, id string) error {
 }
 
 func (h *HybridClient) SaveWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error) {
+	entry.UpdatedByDevice = h.currentDeviceID()
 	saved, err := h.local.SaveWatchEntry(ctx, entry)
 	if err != nil {
 		return domain.WatchEntry{}, err

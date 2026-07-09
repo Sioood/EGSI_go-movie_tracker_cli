@@ -16,6 +16,7 @@ import (
 	"github.com/movietracker/movie-tracker/internal/repository"
 	"github.com/movietracker/movie-tracker/internal/server"
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/tmdb"
 	"github.com/movietracker/movie-tracker/internal/version"
 )
 
@@ -62,6 +63,13 @@ func main() {
 	statsSvc := service.NewStatsService(statsRepo)
 	backupSvc := service.NewBackupService(backupRepo)
 
+	var externalTMDB *server.ExternalTMDB
+	if apiKey := os.Getenv("TMDB_API_KEY"); apiKey != "" {
+		externalTMDB = &server.ExternalTMDB{Client: tmdb.NewClient(apiKey)}
+	} else {
+		logger.Warn("TMDB_API_KEY not set, external search disabled")
+	}
+
 	addr := os.Getenv("ADDR")
 	if addr == "" {
 		if port := os.Getenv("PORT"); port != "" {
@@ -83,6 +91,7 @@ func main() {
 			Movies:  movieSvc,
 			Stats:   statsSvc,
 			Backups: backupSvc,
+			TMDB:    externalTMDB,
 		}, jwtSecret),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
