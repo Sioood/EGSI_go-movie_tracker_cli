@@ -88,6 +88,61 @@ func TestServiceRunMigratesAndSyncs(t *testing.T) {
 	}
 }
 
+func TestServiceRunSerializesConcurrentCalls(t *testing.T) {
+	router := newSyncTestRouter(t)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	clientDB := openClientTestDB(t)
+	defer clientDB.Close()
+
+	movieRepo := repository.NewMovieRepository(clientDB)
+	watchRepo := repository.NewWatchEntryRepository(clientDB)
+	syncRepo := repository.NewSyncRepository(clientDB, movieRepo, watchRepo)
+	movieService := service.NewMovieService(movieRepo, watchRepo)
+
+	ctx := context.Background()
+	authClient := client.NewAuthClient(srv.URL)
+	pair, err := authClient.Register(ctx, "concurrent@example.com", "secret123")
+	if err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	info, err := authClient.Me(ctx, pair.AccessToken)
+	if err != nil {
+		t.Fatalf("me: %v", err)
+	}
+
+	session := appsync.SessionAccess{
+		AccessToken:  pair.AccessToken,
+		RefreshToken: pair.RefreshToken,
+		ServerUserID: info.ID,
+	}
+	syncService := appsync.NewService(
+		movieService,
+		syncRepo,
+		client.NewSyncClient(srv.URL),
+		&tokenRefresher{auth: authClient},
+		func() appsync.SessionAccess { return session },
+		func() string { return "concurrent-device" },
+		func() bool { return true },
+		nil,
+	)
+
+	errCh := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := syncService.Run(ctx)
+			errCh <- err
+		}()
+	}
+
+	for i := range 2 {
+		if err := <-errCh; err != nil {
+			t.Fatalf("concurrent sync run %d: %v", i, err)
+		}
+	}
+}
+
 type tokenRefresher struct {
 	auth *client.AuthClient
 }

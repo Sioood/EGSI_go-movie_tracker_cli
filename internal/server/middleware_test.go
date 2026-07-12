@@ -80,3 +80,36 @@ func TestTrustedProxyUsesXForwardedForForRateLimit(t *testing.T) {
 		t.Fatal("each distinct X-Forwarded-For should have its own rate limit bucket when TRUSTED_PROXY is true")
 	}
 }
+
+func TestJWTMiddlewareMissingBearerPrefix(t *testing.T) {
+	router := newTestRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.Header.Set("Authorization", "Token not-a-bearer")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", rr.Code)
+	}
+}
+
+func TestJWTMiddlewareEmptyBearerToken(t *testing.T) {
+	router := newTestRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.Header.Set("Authorization", "Bearer ")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", rr.Code)
+	}
+}
+
+func TestJWTMiddlewareMalformedToken(t *testing.T) {
+	router := newTestRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.Header.Set("Authorization", "Bearer not.valid.jwt")
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %d", rr.Code)
+	}
+}

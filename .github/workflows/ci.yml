@@ -33,3 +33,6 @@ jobs:
 
       - name: Check dead code
         run: make deadcode
+
+      - name: Check coverage threshold
+        run: make cover-check

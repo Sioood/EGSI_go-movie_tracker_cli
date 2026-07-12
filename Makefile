@@ -1,10 +1,12 @@
-.PHONY: build test test-race cover fmt fmt-check vet lint deadcode check run-cli run-server tidy docker-up docker-down
+.PHONY: build test test-race cover cover-check fmt fmt-check vet lint deadcode check run-cli run-server tidy docker-up docker-down
 .PHONY: build-linux build-windows build-darwin release-snapshot
 
 VERSION ?= $(shell grep 'Version =' internal/version/version.go | cut -d'"' -f2)
 LDFLAGS := -s -w -X github.com/movietracker/movie-tracker/internal/version.Version=$(VERSION)
 GOLANGCI_LINT_VERSION := v1.64.8
 DEADCODE_VERSION := latest
+COVER_MIN ?= 50
+COVER_PACKAGES := $(shell go list ./... | grep -v -E '/cmd/|/internal/app$$|/internal/database$$|/internal/logging$$|/internal/version$$')
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/movietracker ./cmd/cli
@@ -31,8 +33,14 @@ test-race:
 	go test -race ./...
 
 cover:
-	go test -coverprofile=coverage.out ./...
+	go test -coverprofile=coverage.out $(COVER_PACKAGES)
 	go tool cover -func=coverage.out | tail -1
+
+cover-check: cover
+	@pct=$$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$$NF); print $$NF}'); \
+	if [ -z "$$pct" ]; then echo "Impossible de lire la couverture"; exit 1; fi; \
+	awk -v pct="$$pct" -v min="$(COVER_MIN)" 'BEGIN { if (pct+0 < min+0) exit 1 }' || { echo "Couverture $$pct% < $(COVER_MIN)%"; exit 1; }; \
+	echo "Couverture $$pct% (seuil $(COVER_MIN)%)"
 
 fmt:
 	@command -v goimports >/dev/null 2>&1 || go tool goimports -h >/dev/null 2>&1 || go install golang.org/x/tools/cmd/goimports@latest
