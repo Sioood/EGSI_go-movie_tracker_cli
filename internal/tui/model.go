@@ -130,6 +130,8 @@ type Model struct {
 	tmdbSearching        bool
 	tmdbSearch           TMDBSearcher
 	selectedExternalID   string
+	ctx                  context.Context
+	cancel               context.CancelFunc
 }
 
 func (m *Model) setMessage(kind messages.Kind, text string) {
@@ -209,6 +211,9 @@ func New(opts Options) Model {
 	reviewInput.Placeholder = messages.UI.ReviewPlaceholder
 	reviewInput.SetWidth(64)
 	reviewInput.SetHeight(6)
+	reviewInput.CharLimit = service.MaxReviewLength
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	model := Model{
 		route:                initialRoute,
@@ -248,6 +253,8 @@ func New(opts Options) Model {
 		movieFormMode:        movieFormModeManual,
 		filter:               initialFilter,
 		sort:                 initialSort,
+		ctx:                  ctx,
+		cancel:               cancel,
 	}
 	model.refreshMovies()
 	model.refreshPendingCount()
@@ -343,6 +350,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		m.persistState()
+		m.shutdown()
 		return m, tea.Quit
 	case "esc":
 		if m.route == RouteRegister {
@@ -496,7 +504,7 @@ func (m Model) updateMovieList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "d":
 		if item, ok := m.movies.SelectedItem().(movieItem); ok {
-			if err := m.service.DeleteMovie(context.Background(), item.movie.ID); err != nil {
+			if err := m.service.DeleteMovie(m.appContext(), item.movie.ID); err != nil {
 				m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.DeleteFailedFmt, messages.UserMessage(err)))
 				return m, nil
 			}
@@ -607,7 +615,7 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.backupLoading = true
 		m.setMessage(messages.KindInfo, messages.UI.BackupExporting)
-		return m, importBackupCmd(m.backup, m.state.Session.AccessToken, m.currentBackupSnapshot())
+		return m, m.importBackupCmd(m.state.Session.AccessToken, m.currentBackupSnapshot())
 	case "i":
 		if m.state.Config.OfflineMode || !m.state.Session.Authenticated {
 			m.setMessage(messages.KindError, messages.UI.BackupNeedAuth)
@@ -619,7 +627,7 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.backupLoading = true
 		m.setMessage(messages.KindInfo, messages.UI.BackupImporting)
-		return m, exportBackupCmd(m.backup, m.state.Session.AccessToken)
+		return m, m.exportBackupCmd(m.state.Session.AccessToken)
 	case "E":
 		if m.exportLocal == nil {
 			m.setMessage(messages.KindError, messages.UI.BackupUnavailable)
@@ -700,7 +708,7 @@ func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.authLoading = true
 		m.setMessage(messages.KindInfo, messages.UI.LoginLoading)
-		return m, loginCmd(m.auth, email, password)
+		return m, m.loginCmd(email, password)
 	}
 
 	var cmd tea.Cmd
@@ -745,7 +753,7 @@ func (m Model) updateRegister(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.authLoading = true
 		m.setMessage(messages.KindInfo, messages.UI.RegisterLoading)
-		return m, registerCmd(m.auth, email, password)
+		return m, m.registerCmd(email, password)
 	}
 
 	var cmd tea.Cmd
@@ -760,9 +768,12 @@ func (m Model) updateRegister(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func loginCmd(auth AuthClient, email, password string) tea.Cmd {
+func (m Model) loginCmd(email, password string) tea.Cmd {
+	auth := m.auth
+	parent := m.appContext()
 	return func() tea.Msg {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(parent, authRequestTimeout)
+		defer cancel()
 		pair, err := auth.Login(ctx, email, password)
 		if err != nil {
 			return authResultMsg{err: err, action: "login"}
@@ -778,9 +789,12 @@ func loginCmd(auth AuthClient, email, password string) tea.Cmd {
 	}
 }
 
-func registerCmd(auth AuthClient, email, password string) tea.Cmd {
+func (m Model) registerCmd(email, password string) tea.Cmd {
+	auth := m.auth
+	parent := m.appContext()
 	return func() tea.Msg {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(parent, authRequestTimeout)
+		defer cancel()
 		pair, err := auth.Register(ctx, email, password)
 		if err != nil {
 			return authResultMsg{err: err, action: "register"}
@@ -1005,7 +1019,7 @@ func (m *Model) refreshMovies() {
 		return
 	}
 
-	movies, err := m.service.SearchMovies(context.Background(), domain.MovieSearchParams{
+	movies, err := m.service.SearchMovies(m.appContext(), domain.MovieSearchParams{
 		UserID: m.currentUserID(),
 		Query:  m.searchInput.Value(),
 		Filter: m.filter,
@@ -1021,7 +1035,7 @@ func (m *Model) refreshMovies() {
 
 	items := make([]list.Item, 0, len(movies))
 	for _, movie := range movies {
-		entry, err := m.service.GetWatchEntry(context.Background(), movie.ID)
+		entry, err := m.service.GetWatchEntry(m.appContext(), movie.ID)
 		if err != nil && !errors.Is(err, apperrors.ErrWatchEntryNotFound) {
 			m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.StatusIncompleteFmt, messages.UserMessage(err)))
 		}
@@ -1038,7 +1052,7 @@ func (m *Model) refreshStats() {
 	if m.service == nil {
 		return
 	}
-	stats, err := m.service.GetStats(context.Background(), m.currentUserID())
+	stats, err := m.service.GetStats(m.appContext(), m.currentUserID())
 	if err != nil {
 		m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.StatsUnavailableFmt, messages.UserMessage(err)))
 		return
@@ -1077,7 +1091,7 @@ func (m *Model) createMovieFromForm() (domain.Movie, error) {
 		return domain.Movie{}, err
 	}
 
-	return m.service.CreateMovie(context.Background(), domain.Movie{
+	return m.service.CreateMovie(m.appContext(), domain.Movie{
 		UserID:     m.currentUserID(),
 		Title:      m.titleInput.Value(),
 		Year:       year,
@@ -1146,7 +1160,7 @@ func (m *Model) saveMovieDetail() error {
 	entry.WatchedAt = watchedAt
 	entry.Watched = watchedAt != nil || entry.Watched
 
-	saved, err := m.service.SaveWatchEntry(context.Background(), entry)
+	saved, err := m.service.SaveWatchEntry(m.appContext(), entry)
 	if err != nil {
 		return err
 	}

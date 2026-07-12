@@ -89,8 +89,11 @@ func (m Model) startSync() (tea.Model, tea.Cmd) {
 
 func (m Model) syncCmd() tea.Cmd {
 	runner := m.syncRunner
+	parent := m.appContext()
 	return func() tea.Msg {
-		result, err := runner.Run(context.Background())
+		ctx, cancel := context.WithTimeout(parent, syncRequestTimeout)
+		defer cancel()
+		result, err := runner.Run(ctx)
 		return syncResultMsg{result: result, err: err}
 	}
 }
@@ -101,7 +104,7 @@ func (m Model) handleSyncResult(msg syncResultMsg) (tea.Model, tea.Cmd) {
 		m.syncStatus = SyncStatusError
 		m.syncError = messages.UserMessage(msg.err)
 		if m.syncRunner != nil {
-			if count, err := m.syncRunner.PendingCount(context.Background()); err == nil {
+			if count, err := m.syncRunner.PendingCount(m.appContext()); err == nil {
 				m.pendingCount = count
 			}
 		}
@@ -128,7 +131,7 @@ func (m *Model) refreshPendingCount() {
 	if m.syncRunner == nil {
 		return
 	}
-	count, err := m.syncRunner.PendingCount(context.Background())
+	count, err := m.syncRunner.PendingCount(m.appContext())
 	if err == nil {
 		m.pendingCount = count
 	}

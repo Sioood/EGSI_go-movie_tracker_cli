@@ -10,6 +10,9 @@ import (
 	"github.com/movietracker/movie-tracker/internal/domain"
 )
 
+// MaxReviewLength is the maximum number of characters allowed in a watch entry review.
+const MaxReviewLength = 5000
+
 type MovieStore interface {
 	Create(ctx context.Context, movie domain.Movie) (domain.Movie, error)
 	GetByID(ctx context.Context, id string) (domain.Movie, error)
@@ -227,6 +230,9 @@ func validateWatchEntry(entry domain.WatchEntry) error {
 	}
 	if entry.Rating != nil && (*entry.Rating < 0 || *entry.Rating > float64(entry.RatingScale)) {
 		return fmt.Errorf("%w: rating must be between 0 and %d", apperrors.ErrInvalidRating, entry.RatingScale)
+	}
+	if len(entry.Review) > MaxReviewLength {
+		return fmt.Errorf("%w: review must be at most %d characters", apperrors.ErrValidation, MaxReviewLength)
 	}
 	return nil
 }

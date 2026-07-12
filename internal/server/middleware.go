@@ -53,7 +53,7 @@ func RateLimiter(rps rate.Limit, burst int, trustedProxy bool) func(http.Handler
 	var mu sync.Mutex
 	limiters := make(map[string]*entry)
 
-	// Purge stale entries every minute to prevent unbounded memory growth.
+	// Background goroutine: purge stale per-IP limiters every minute to prevent unbounded memory growth.
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()

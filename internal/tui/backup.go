@@ -29,9 +29,11 @@ type backupResultMsg struct {
 	err      error
 }
 
-func exportBackupCmd(client BackupClient, accessToken string) tea.Cmd {
+func (m Model) exportBackupCmd(accessToken string) tea.Cmd {
+	client := m.backup
+	parent := m.appContext()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(parent, backupRequestTimeout)
 		defer cancel()
 
 		snapshot, err := client.ExportSnapshot(ctx, accessToken)
@@ -39,9 +41,11 @@ func exportBackupCmd(client BackupClient, accessToken string) tea.Cmd {
 	}
 }
 
-func importBackupCmd(client BackupClient, accessToken string, snapshot BackupSnapshot) tea.Cmd {
+func (m Model) importBackupCmd(accessToken string, snapshot BackupSnapshot) tea.Cmd {
+	client := m.backup
+	parent := m.appContext()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(parent, backupRequestTimeout)
 		defer cancel()
 
 		err := client.ImportSnapshot(ctx, accessToken, snapshot)

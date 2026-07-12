@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/movietracker/movie-tracker/internal/apperrors"
@@ -42,6 +43,7 @@ type Service struct {
 	getDeviceID func() string
 	isOnline    func() bool
 	onTokens    func(access, refresh string)
+	runMu       sync.Mutex
 }
 
 // NewService creates a sync orchestrator.
@@ -79,7 +81,11 @@ type Result struct {
 }
 
 // Run performs push then pull when online and authenticated.
+// Concurrent calls are serialized to avoid overlapping push/pull cycles.
 func (s *Service) Run(ctx context.Context) (Result, error) {
+	s.runMu.Lock()
+	defer s.runMu.Unlock()
+
 	if s.isOnline != nil && !s.isOnline() {
 		return Result{}, apperrors.ErrNetwork
 	}

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -27,7 +26,7 @@ func (m *Model) refreshConflicts() {
 		m.conflictRecords = nil
 		return
 	}
-	records, err := m.syncRunner.ListConflicts(context.Background())
+	records, err := m.syncRunner.ListConflicts(m.appContext())
 	if err != nil {
 		m.setMessage(messages.KindError, fmt.Sprintf(messages.UI.LoadFailedFmt, messages.UserMessage(err)))
 		return
@@ -77,7 +76,7 @@ func (m Model) updateConflicts(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.syncRunner == nil || m.selectedConflict.ID == "" {
 			return m, nil
 		}
-		if err := m.syncRunner.ResolveConflict(context.Background(), m.selectedConflict.ID, m.conflictChoice); err != nil {
+		if err := m.syncRunner.ResolveConflict(m.appContext(), m.selectedConflict.ID, m.conflictChoice); err != nil {
 			m.setError(err)
 			return m, nil
 		}
@@ -145,7 +144,7 @@ func (m Model) deviceLabel(deviceID, fallback string) string {
 		return fallback
 	}
 	if m.syncRunner != nil {
-		if name, err := m.syncRunner.GetDeviceName(context.Background(), deviceID); err == nil && name != "" {
+		if name, err := m.syncRunner.GetDeviceName(m.appContext(), deviceID); err == nil && name != "" {
 			return name
 		}
 	}
@@ -177,7 +176,7 @@ func (m *Model) refreshConflictCount() {
 		m.conflictCount = 0
 		return
 	}
-	count, err := m.syncRunner.ConflictCount(context.Background())
+	count, err := m.syncRunner.ConflictCount(m.appContext())
 	if err == nil {
 		m.conflictCount = count
 		if count > 0 && m.syncStatus != SyncStatusSyncing && m.syncStatus != SyncStatusError {

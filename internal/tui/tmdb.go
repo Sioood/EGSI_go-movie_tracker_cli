@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -74,8 +73,9 @@ func (m *Model) enterTMDBSearch() (tea.Model, tea.Cmd) {
 func (m Model) tmdbSearchCmd(query string) tea.Cmd {
 	searcher := m.tmdbSearch
 	year, _ := parseOptionalYear(m.yearInput.Value())
+	parent := m.appContext()
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(parent, tmdbRequestTimeout)
 		defer cancel()
 		results, err := searcher.SearchMovies(ctx, query, year)
 		return tmdbSearchResultMsg{results: results, err: err}
