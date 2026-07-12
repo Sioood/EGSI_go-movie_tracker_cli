@@ -72,6 +72,10 @@ func (fakeWatchEntryStore) GetByMovieID(ctx context.Context, movieID string) (do
 	return domain.WatchEntry{MovieID: movieID}, nil
 }
 
+func (fakeWatchEntryStore) ListByMovieIDs(ctx context.Context, movieIDs []string) ([]domain.WatchEntry, error) {
+	return nil, nil
+}
+
 func (fakeWatchEntryStore) DeleteByMovieID(ctx context.Context, movieID string) error {
 	return nil
 }

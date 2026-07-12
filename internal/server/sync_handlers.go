@@ -8,39 +8,33 @@ import (
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/service"
+	"github.com/movietracker/movie-tracker/internal/transport/syncdto"
 )
 
 type syncHandler struct {
 	movies *service.MovieService
 }
 
-type syncPayload struct {
-	Movies          []domain.Movie      `json:"movies"`
-	WatchEntries    []domain.WatchEntry `json:"watch_entries"`
-	DeletedMovieIDs []string            `json:"deleted_movie_ids"`
-	SourceDeviceID  string              `json:"source_device_id,omitempty"`
-	SyncedAt        time.Time           `json:"synced_at"`
-}
-
 // GET /api/v1/sync — export the authenticated user's full dataset.
 func (h *syncHandler) export(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 
-	movies, err := h.movies.ListMovies(r.Context(), claims.UserID)
+	items, err := h.movies.ListMoviesWithEntries(r.Context(), claims.UserID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "erreur interne")
 		return
 	}
 
-	entries := make([]domain.WatchEntry, 0, len(movies))
-	for _, m := range movies {
-		entry, err := h.movies.GetWatchEntry(r.Context(), m.ID)
-		if err == nil {
-			entries = append(entries, entry)
+	movies := make([]domain.Movie, 0, len(items))
+	entries := make([]domain.WatchEntry, 0, len(items))
+	for _, item := range items {
+		movies = append(movies, item.Movie)
+		if item.WatchEntry != nil {
+			entries = append(entries, *item.WatchEntry)
 		}
 	}
 
-	writeJSON(w, http.StatusOK, syncPayload{
+	writeJSON(w, http.StatusOK, syncdto.Payload{
 		Movies:       movies,
 		WatchEntries: entries,
 		SyncedAt:     time.Now().UTC(),
@@ -51,7 +45,7 @@ func (h *syncHandler) export(w http.ResponseWriter, r *http.Request) {
 func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 
-	var body syncPayload
+	var body syncdto.Payload
 	if err := decodeJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "corps JSON invalide")
 		return
@@ -83,19 +77,18 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	syncedEntries := 0
-	for _, entry := range body.WatchEntries {
-		movie, err := h.movies.GetMovie(r.Context(), entry.MovieID)
-		if err != nil || movie.UserID != claims.UserID {
+	for _, e := range body.WatchEntries {
+		if !syncedMovieIDs[e.MovieID] {
 			continue
 		}
-		if _, _, err := h.movies.SyncUpsertWatchEntry(r.Context(), entry); err == nil {
+		if _, _, err := h.movies.SyncUpsertWatchEntry(r.Context(), e); err == nil {
 			syncedEntries++
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"synced_movies":        len(syncedMovieIDs),
-		"synced_watch_entries": syncedEntries,
-		"deleted_movies":       deleted,
+	writeJSON(w, http.StatusOK, syncdto.ImportResult{
+		SyncedMovies:       len(syncedMovieIDs),
+		SyncedWatchEntries: syncedEntries,
+		DeletedMovies:      deleted,
 	})
 }

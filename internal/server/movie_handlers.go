@@ -19,6 +19,13 @@ type movieWithEntry struct {
 	WatchEntry *domain.WatchEntry `json:"watch_entry"`
 }
 
+func toMovieWithEntry(item service.MovieWithEntry) movieWithEntry {
+	return movieWithEntry{
+		Movie:      item.Movie,
+		WatchEntry: item.WatchEntry,
+	}
+}
+
 // GET /api/v1/movies?q=&filter=&sort=
 func (h *movieHandler) list(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
@@ -33,7 +40,7 @@ func (h *movieHandler) list(w http.ResponseWriter, r *http.Request) {
 		sort = domain.MovieSortTitle
 	}
 
-	movies, err := h.movies.SearchMovies(r.Context(), domain.MovieSearchParams{
+	items, err := h.movies.SearchMoviesWithEntries(r.Context(), domain.MovieSearchParams{
 		UserID: claims.UserID,
 		Query:  q.Get("q"),
 		Filter: filter,
@@ -44,14 +51,9 @@ func (h *movieHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := make([]movieWithEntry, 0, len(movies))
-	for _, m := range movies {
-		entry, err := h.movies.GetWatchEntry(r.Context(), m.ID)
-		item := movieWithEntry{Movie: m}
-		if err == nil {
-			item.WatchEntry = &entry
-		}
-		result = append(result, item)
+	result := make([]movieWithEntry, 0, len(items))
+	for _, item := range items {
+		result = append(result, toMovieWithEntry(item))
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"movies": result})
@@ -90,23 +92,13 @@ func (h *movieHandler) get(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	id := r.PathValue("id")
 
-	movie, err := h.movies.GetMovie(r.Context(), id)
+	item, err := h.movies.GetMovieWithEntry(r.Context(), claims.UserID, id)
 	if err != nil {
 		writeMovieError(w, err)
 		return
 	}
-	if movie.UserID != claims.UserID {
-		writeError(w, http.StatusForbidden, "accès interdit")
-		return
-	}
 
-	entry, err := h.movies.GetWatchEntry(r.Context(), id)
-	item := movieWithEntry{Movie: movie}
-	if err == nil {
-		item.WatchEntry = &entry
-	}
-
-	writeJSON(w, http.StatusOK, item)
+	writeJSON(w, http.StatusOK, toMovieWithEntry(item))
 }
 
 // PUT /api/v1/movies/{id}
@@ -114,13 +106,8 @@ func (h *movieHandler) update(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	id := r.PathValue("id")
 
-	existing, err := h.movies.GetMovie(r.Context(), id)
-	if err != nil {
+	if _, err := h.movies.GetMovieForUser(r.Context(), claims.UserID, id); err != nil {
 		writeMovieError(w, err)
-		return
-	}
-	if existing.UserID != claims.UserID {
-		writeError(w, http.StatusForbidden, "accès interdit")
 		return
 	}
 
@@ -146,13 +133,13 @@ func (h *movieHandler) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	item := service.MovieWithEntry{Movie: updated}
 	entry, err := h.movies.GetWatchEntry(r.Context(), id)
-	item := movieWithEntry{Movie: updated}
 	if err == nil {
 		item.WatchEntry = &entry
 	}
 
-	writeJSON(w, http.StatusOK, item)
+	writeJSON(w, http.StatusOK, toMovieWithEntry(item))
 }
 
 // DELETE /api/v1/movies/{id}
@@ -160,13 +147,8 @@ func (h *movieHandler) delete(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	id := r.PathValue("id")
 
-	movie, err := h.movies.GetMovie(r.Context(), id)
-	if err != nil {
+	if _, err := h.movies.GetMovieForUser(r.Context(), claims.UserID, id); err != nil {
 		writeMovieError(w, err)
-		return
-	}
-	if movie.UserID != claims.UserID {
-		writeError(w, http.StatusForbidden, "accès interdit")
 		return
 	}
 
@@ -183,13 +165,9 @@ func (h *movieHandler) watch(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	id := r.PathValue("id")
 
-	movie, err := h.movies.GetMovie(r.Context(), id)
+	movie, err := h.movies.GetMovieForUser(r.Context(), claims.UserID, id)
 	if err != nil {
 		writeMovieError(w, err)
-		return
-	}
-	if movie.UserID != claims.UserID {
-		writeError(w, http.StatusForbidden, "accès interdit")
 		return
 	}
 
@@ -220,7 +198,6 @@ func (h *movieHandler) watch(w http.ResponseWriter, r *http.Request) {
 		ratingScale = 10
 	}
 
-	// Fetch existing entry to preserve ID for the upsert.
 	existing, _ := h.movies.GetWatchEntry(r.Context(), id)
 
 	entry, err := h.movies.SaveWatchEntry(r.Context(), domain.WatchEntry{
@@ -244,6 +221,8 @@ func writeMovieError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, apperrors.ErrMovieNotFound):
 		writeError(w, http.StatusNotFound, "film introuvable")
+	case errors.Is(err, apperrors.ErrForbidden):
+		writeError(w, http.StatusForbidden, "accès interdit")
 	case errors.Is(err, apperrors.ErrValidation):
 		writeError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, apperrors.ErrInvalidRating):

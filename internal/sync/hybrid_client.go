@@ -4,25 +4,9 @@ import (
 	"context"
 
 	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/port"
 	"github.com/movietracker/movie-tracker/internal/service"
 )
-
-// MovieReader is the subset of movie operations used by the hybrid client.
-type MovieReader interface {
-	CreateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error)
-	GetMovie(ctx context.Context, id string) (domain.Movie, error)
-	ListMovies(ctx context.Context, userID string) ([]domain.Movie, error)
-	SearchMovies(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error)
-	UpdateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error)
-	DeleteMovie(ctx context.Context, id string) error
-	SaveWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error)
-	GetWatchEntry(ctx context.Context, movieID string) (domain.WatchEntry, error)
-}
-
-// StatsReader loads statistics for a user.
-type StatsReader interface {
-	GetStats(ctx context.Context, userID string) (domain.Stats, error)
-}
 
 // SyncTrigger runs a sync cycle asynchronously.
 type SyncTrigger interface {
@@ -36,8 +20,8 @@ type SyncTrigger interface {
 
 // HybridClient writes locally, marks pending changes, and optionally triggers sync.
 type HybridClient struct {
-	local       MovieReader
-	stats       StatsReader
+	local       port.MovieOperations
+	stats       port.StatsOperations
 	sync        SyncTrigger
 	userID      func(context.Context) (string, error)
 	getDeviceID func() string
@@ -46,7 +30,7 @@ type HybridClient struct {
 }
 
 // NewHybridClient creates a local-first MovieClient with sync side effects.
-func NewHybridClient(local MovieReader, stats StatsReader, syncSvc SyncTrigger, userID func(context.Context) (string, error), getDeviceID func() string, online func() bool, onSync func()) *HybridClient {
+func NewHybridClient(local port.MovieOperations, stats port.StatsOperations, syncSvc SyncTrigger, userID func(context.Context) (string, error), getDeviceID func() string, online func() bool, onSync func()) *HybridClient {
 	return &HybridClient{
 		local:       local,
 		stats:       stats,

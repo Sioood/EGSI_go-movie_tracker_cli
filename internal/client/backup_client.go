@@ -42,7 +42,7 @@ func (c *BackupClient) ExportSnapshot(ctx context.Context, accessToken string) (
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := httpClient(c.HTTPClient).Do(req)
 	if err != nil {
 		return service.BackupSnapshot{}, fmt.Errorf("backup export: %w", err)
 	}
@@ -52,7 +52,7 @@ func (c *BackupClient) ExportSnapshot(ctx context.Context, accessToken string) (
 		return service.BackupSnapshot{}, apperrors.ErrUnauthorized
 	}
 	if resp.StatusCode != http.StatusOK {
-		return service.BackupSnapshot{}, mapSyncAPIError(resp)
+		return service.BackupSnapshot{}, mapAPIError(resp)
 	}
 
 	var snapshot service.BackupSnapshot
@@ -76,7 +76,7 @@ func (c *BackupClient) ImportSnapshot(ctx context.Context, accessToken string, s
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := httpClient(c.HTTPClient).Do(req)
 	if err != nil {
 		return fmt.Errorf("backup import: %w", err)
 	}
@@ -86,7 +86,7 @@ func (c *BackupClient) ImportSnapshot(ctx context.Context, accessToken string, s
 		return apperrors.ErrUnauthorized
 	}
 	if resp.StatusCode != http.StatusOK {
-		return mapSyncAPIError(resp)
+		return mapAPIError(resp)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil
@@ -120,7 +120,7 @@ func decodeBackupResource[T any](c *BackupClient, ctx context.Context, accessTok
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := httpClient(c.HTTPClient).Do(req)
 	if err != nil {
 		return zero, fmt.Errorf("backup get %s: %w", path, err)
 	}
@@ -130,7 +130,7 @@ func decodeBackupResource[T any](c *BackupClient, ctx context.Context, accessTok
 		return zero, apperrors.ErrUnauthorized
 	}
 	if resp.StatusCode != http.StatusOK {
-		return zero, mapSyncAPIError(resp)
+		return zero, mapAPIError(resp)
 	}
 
 	var value T
@@ -153,7 +153,7 @@ func putBackupResource(c *BackupClient, ctx context.Context, accessToken, path s
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := httpClient(c.HTTPClient).Do(req)
 	if err != nil {
 		return fmt.Errorf("backup put %s: %w", path, err)
 	}
@@ -163,7 +163,7 @@ func putBackupResource(c *BackupClient, ctx context.Context, accessToken, path s
 		return apperrors.ErrUnauthorized
 	}
 	if resp.StatusCode != http.StatusOK {
-		return mapSyncAPIError(resp)
+		return mapAPIError(resp)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return nil

@@ -15,21 +15,15 @@ import (
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/config"
 	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/port"
 	"github.com/movietracker/movie-tracker/internal/service"
 	"github.com/movietracker/movie-tracker/internal/tmdb"
 	"github.com/movietracker/movie-tracker/internal/tui/messages"
 )
 
 type MovieClient interface {
-	CreateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error)
-	GetMovie(ctx context.Context, id string) (domain.Movie, error)
-	ListMovies(ctx context.Context, userID string) ([]domain.Movie, error)
-	SearchMovies(ctx context.Context, params domain.MovieSearchParams) ([]domain.Movie, error)
-	UpdateMovie(ctx context.Context, movie domain.Movie) (domain.Movie, error)
-	DeleteMovie(ctx context.Context, id string) error
-	SaveWatchEntry(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error)
-	GetWatchEntry(ctx context.Context, movieID string) (domain.WatchEntry, error)
-	GetStats(ctx context.Context, userID string) (domain.Stats, error)
+	port.MovieOperations
+	port.StatsOperations
 }
 
 // AuthClient performs remote authentication (implemented by internal/client).

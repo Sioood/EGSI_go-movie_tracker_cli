@@ -5,29 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"time"
 
 	"github.com/movietracker/movie-tracker/internal/apperrors"
-	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/transport/syncdto"
 )
 
 // SyncPayload is the bulk sync export/import body.
-type SyncPayload struct {
-	Movies          []domain.Movie      `json:"movies"`
-	WatchEntries    []domain.WatchEntry `json:"watch_entries"`
-	DeletedMovieIDs []string            `json:"deleted_movie_ids"`
-	SourceDeviceID  string              `json:"source_device_id,omitempty"`
-	SyncedAt        time.Time           `json:"synced_at"`
-}
+type SyncPayload = syncdto.Payload
 
 // ImportResult is returned by POST /api/v1/sync.
-type ImportResult struct {
-	SyncedMovies       int `json:"synced_movies"`
-	SyncedWatchEntries int `json:"synced_watch_entries"`
-	DeletedMovies      int `json:"deleted_movies"`
-}
+type ImportResult = syncdto.ImportResult
 
 // SyncClient performs HTTP calls against the MovieTracker sync API.
 type SyncClient struct {
@@ -38,10 +26,8 @@ type SyncClient struct {
 // NewSyncClient creates a SyncClient with a 10s timeout.
 func NewSyncClient(baseURL string) *SyncClient {
 	return &SyncClient{
-		BaseURL: normalizeBaseURL(baseURL),
-		HTTPClient: &http.Client{
-			Timeout: defaultTimeout,
-		},
+		BaseURL:    normalizeBaseURL(baseURL),
+		HTTPClient: &http.Client{Timeout: defaultTimeout},
 	}
 }
 
@@ -51,10 +37,7 @@ func (c *SyncClient) SetBaseURL(baseURL string) {
 }
 
 func (c *SyncClient) client() *http.Client {
-	if c.HTTPClient != nil {
-		return c.HTTPClient
-	}
-	return &http.Client{Timeout: defaultTimeout}
+	return httpClient(c.HTTPClient)
 }
 
 // Export downloads the authenticated user's dataset.
@@ -75,7 +58,7 @@ func (c *SyncClient) Export(ctx context.Context, accessToken string) (SyncPayloa
 		return SyncPayload{}, apperrors.ErrUnauthorized
 	}
 	if resp.StatusCode != http.StatusOK {
-		return SyncPayload{}, mapSyncAPIError(resp)
+		return SyncPayload{}, mapAPIError(resp)
 	}
 
 	var payload SyncPayload
@@ -109,7 +92,7 @@ func (c *SyncClient) Import(ctx context.Context, accessToken string, payload Syn
 		return ImportResult{}, apperrors.ErrUnauthorized
 	}
 	if resp.StatusCode != http.StatusOK {
-		return ImportResult{}, mapSyncAPIError(resp)
+		return ImportResult{}, mapAPIError(resp)
 	}
 
 	var result ImportResult
@@ -117,15 +100,4 @@ func (c *SyncClient) Import(ctx context.Context, accessToken string, payload Syn
 		return ImportResult{}, fmt.Errorf("%w: decode import: %v", apperrors.ErrNetwork, err)
 	}
 	return result, nil
-}
-
-func mapSyncAPIError(resp *http.Response) error {
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	var payload struct {
-		Error string `json:"error"`
-	}
-	if err := json.Unmarshal(body, &payload); err == nil && payload.Error != "" {
-		return fmt.Errorf("%w: %s", apperrors.ErrNetwork, payload.Error)
-	}
-	return fmt.Errorf("%w: HTTP %d", apperrors.ErrNetwork, resp.StatusCode)
 }

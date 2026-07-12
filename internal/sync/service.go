@@ -410,7 +410,7 @@ func (s *Service) applyRemoteMovie(ctx context.Context, meta repository.SyncMeta
 	}
 
 	if shouldRecordConflict(ctx, s.syncRepo, meta, domain.SyncEntityMovie, remote.ID, local.UpdatedAt, remote.UpdatedAt) {
-		return false, s.recordMovieConflict(ctx, local, remote)
+		return false, s.recordConflict(ctx, domain.SyncEntityMovie, local.ID, local.UpdatedByDevice, remote.UpdatedByDevice, local, remote)
 	}
 	return s.syncRepo.ApplyMovieLWW(ctx, remote)
 }
@@ -434,7 +434,7 @@ func (s *Service) applyRemoteWatchEntry(ctx context.Context, meta repository.Syn
 	}
 
 	if shouldRecordConflict(ctx, s.syncRepo, meta, domain.SyncEntityWatchEntry, remote.MovieID, local.UpdatedAt, remote.UpdatedAt) {
-		return false, s.recordWatchEntryConflict(ctx, local, remote)
+		return false, s.recordConflict(ctx, domain.SyncEntityWatchEntry, local.MovieID, local.UpdatedByDevice, remote.UpdatedByDevice, local, remote)
 	}
 	return s.syncRepo.ApplyWatchEntryLWW(ctx, remote)
 }
@@ -459,7 +459,7 @@ func shouldRecordConflict(
 	return localUpdated.After(*meta.LastSyncAt) && remoteUpdated.After(*meta.LastSyncAt)
 }
 
-func (s *Service) recordMovieConflict(ctx context.Context, local, remote domain.Movie) error {
+func (s *Service) recordConflict(ctx context.Context, entityType, entityID, localDeviceID, remoteDeviceID string, local, remote any) error {
 	localJSON, err := json.Marshal(local)
 	if err != nil {
 		return err
@@ -469,32 +469,12 @@ func (s *Service) recordMovieConflict(ctx context.Context, local, remote domain.
 		return err
 	}
 	return s.syncRepo.RecordConflict(ctx, domain.SyncConflict{
-		EntityType:     domain.SyncEntityMovie,
-		EntityID:       local.ID,
+		EntityType:     entityType,
+		EntityID:       entityID,
 		LocalJSON:      string(localJSON),
 		RemoteJSON:     string(remoteJSON),
-		LocalDeviceID:  local.UpdatedByDevice,
-		RemoteDeviceID: remote.UpdatedByDevice,
-		DetectedAt:     time.Now().UTC(),
-	})
-}
-
-func (s *Service) recordWatchEntryConflict(ctx context.Context, local, remote domain.WatchEntry) error {
-	localJSON, err := json.Marshal(local)
-	if err != nil {
-		return err
-	}
-	remoteJSON, err := json.Marshal(remote)
-	if err != nil {
-		return err
-	}
-	return s.syncRepo.RecordConflict(ctx, domain.SyncConflict{
-		EntityType:     domain.SyncEntityWatchEntry,
-		EntityID:       local.MovieID,
-		LocalJSON:      string(localJSON),
-		RemoteJSON:     string(remoteJSON),
-		LocalDeviceID:  local.UpdatedByDevice,
-		RemoteDeviceID: remote.UpdatedByDevice,
+		LocalDeviceID:  localDeviceID,
+		RemoteDeviceID: remoteDeviceID,
 		DetectedAt:     time.Now().UTC(),
 	})
 }

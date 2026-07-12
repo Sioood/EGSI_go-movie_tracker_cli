@@ -36,10 +36,7 @@ func (c *ExternalClient) SetBaseURL(baseURL string) {
 }
 
 func (c *ExternalClient) client() *http.Client {
-	if c.HTTPClient != nil {
-		return c.HTTPClient
-	}
-	return &http.Client{Timeout: defaultTimeout}
+	return httpClient(c.HTTPClient)
 }
 
 // SearchMovies queries GET /api/v1/search/external.

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,21 +113,18 @@ func (s *ExportService) buildExport(ctx context.Context, userID string) (MovieEx
 		return MovieExport{}, fmt.Errorf("%w: user id is required", apperrors.ErrValidation)
 	}
 
-	movies, err := s.movies.ListMovies(ctx, userID)
+	items, err := s.movies.ListMoviesWithEntries(ctx, userID)
 	if err != nil {
 		return MovieExport{}, err
 	}
 
-	entries := make([]domain.WatchEntry, 0, len(movies))
-	for _, movie := range movies {
-		entry, err := s.movies.GetWatchEntry(ctx, movie.ID)
-		if errors.Is(err, apperrors.ErrWatchEntryNotFound) {
-			continue
+	movies := make([]domain.Movie, 0, len(items))
+	entries := make([]domain.WatchEntry, 0, len(items))
+	for _, item := range items {
+		movies = append(movies, item.Movie)
+		if item.WatchEntry != nil {
+			entries = append(entries, *item.WatchEntry)
 		}
-		if err != nil {
-			return MovieExport{}, err
-		}
-		entries = append(entries, entry)
 	}
 
 	return MovieExport{

@@ -157,6 +157,16 @@ func (s exportWatchStore) GetByMovieID(ctx context.Context, movieID string) (dom
 	return s.entries[movieID], nil
 }
 
+func (s exportWatchStore) ListByMovieIDs(ctx context.Context, movieIDs []string) ([]domain.WatchEntry, error) {
+	entries := make([]domain.WatchEntry, 0, len(movieIDs))
+	for _, movieID := range movieIDs {
+		if entry, ok := s.entries[movieID]; ok {
+			entries = append(entries, entry)
+		}
+	}
+	return entries, nil
+}
+
 func (s exportWatchStore) DeleteByMovieID(ctx context.Context, movieID string) error {
 	return nil
 }

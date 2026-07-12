@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -100,6 +101,43 @@ func (r *WatchEntryRepository) ListAll(ctx context.Context) ([]domain.WatchEntry
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("%w: list watch entries: %v", apperrors.ErrDB, err)
+	}
+	defer rows.Close()
+
+	var entries []domain.WatchEntry
+	for rows.Next() {
+		entry, err := scanWatchEntry(rows)
+		if err != nil {
+			return nil, fmt.Errorf("%w: scan watch entry: %v", apperrors.ErrDB, err)
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: iterate watch entries: %v", apperrors.ErrDB, err)
+	}
+	return entries, nil
+}
+
+func (r *WatchEntryRepository) ListByMovieIDs(ctx context.Context, movieIDs []string) ([]domain.WatchEntry, error) {
+	if len(movieIDs) == 0 {
+		return nil, nil
+	}
+
+	placeholders := make([]string, len(movieIDs))
+	args := make([]any, len(movieIDs))
+	for i, id := range movieIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		SELECT id, movie_id, watched, rating, rating_scale, review, watched_at, updated_by_device, updated_at
+		FROM watch_entries
+		WHERE movie_id IN (` + strings.Join(placeholders, ",") + `)`
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("%w: list watch entries by movie ids: %v", apperrors.ErrDB, err)
 	}
 	defer rows.Close()
 

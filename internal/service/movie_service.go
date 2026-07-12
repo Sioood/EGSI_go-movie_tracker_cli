@@ -24,8 +24,15 @@ type MovieStore interface {
 type WatchEntryStore interface {
 	Upsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, error)
 	GetByMovieID(ctx context.Context, movieID string) (domain.WatchEntry, error)
+	ListByMovieIDs(ctx context.Context, movieIDs []string) ([]domain.WatchEntry, error)
 	DeleteByMovieID(ctx context.Context, movieID string) error
 	SyncUpsert(ctx context.Context, entry domain.WatchEntry) (domain.WatchEntry, bool, error)
+}
+
+// MovieWithEntry pairs a movie with an optional watch entry.
+type MovieWithEntry struct {
+	Movie      domain.Movie
+	WatchEntry *domain.WatchEntry
 }
 
 type MovieService struct {
@@ -59,6 +66,76 @@ func (s *MovieService) CreateMovie(ctx context.Context, movie domain.Movie) (dom
 
 func (s *MovieService) GetMovie(ctx context.Context, id string) (domain.Movie, error) {
 	return s.movies.GetByID(ctx, id)
+}
+
+func (s *MovieService) GetMovieForUser(ctx context.Context, userID, movieID string) (domain.Movie, error) {
+	movie, err := s.movies.GetByID(ctx, movieID)
+	if err != nil {
+		return domain.Movie{}, err
+	}
+	if movie.UserID != userID {
+		return domain.Movie{}, apperrors.ErrForbidden
+	}
+	return movie, nil
+}
+
+func (s *MovieService) GetMovieWithEntry(ctx context.Context, userID, movieID string) (MovieWithEntry, error) {
+	movie, err := s.GetMovieForUser(ctx, userID, movieID)
+	if err != nil {
+		return MovieWithEntry{}, err
+	}
+	item := MovieWithEntry{Movie: movie}
+	entry, err := s.watchEntries.GetByMovieID(ctx, movieID)
+	if err == nil {
+		item.WatchEntry = &entry
+	} else if !errors.Is(err, apperrors.ErrWatchEntryNotFound) {
+		return MovieWithEntry{}, err
+	}
+	return item, nil
+}
+
+func (s *MovieService) ListMoviesWithEntries(ctx context.Context, userID string) ([]MovieWithEntry, error) {
+	movies, err := s.movies.ListByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.attachEntriesForMovies(ctx, movies)
+}
+
+func (s *MovieService) SearchMoviesWithEntries(ctx context.Context, params domain.MovieSearchParams) ([]MovieWithEntry, error) {
+	movies, err := s.movies.Search(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.attachEntriesForMovies(ctx, movies)
+}
+
+func (s *MovieService) attachEntriesForMovies(ctx context.Context, movies []domain.Movie) ([]MovieWithEntry, error) {
+	if len(movies) == 0 {
+		return nil, nil
+	}
+	movieIDs := make([]string, len(movies))
+	for i, movie := range movies {
+		movieIDs[i] = movie.ID
+	}
+	entries, err := s.watchEntries.ListByMovieIDs(ctx, movieIDs)
+	if err != nil {
+		return nil, err
+	}
+	byMovieID := make(map[string]domain.WatchEntry, len(entries))
+	for _, entry := range entries {
+		byMovieID[entry.MovieID] = entry
+	}
+	result := make([]MovieWithEntry, 0, len(movies))
+	for _, movie := range movies {
+		item := MovieWithEntry{Movie: movie}
+		if entry, ok := byMovieID[movie.ID]; ok {
+			entry := entry
+			item.WatchEntry = &entry
+		}
+		result = append(result, item)
+	}
+	return result, nil
 }
 
 func (s *MovieService) ListMovies(ctx context.Context, userID string) ([]domain.Movie, error) {
