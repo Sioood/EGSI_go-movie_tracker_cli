@@ -30,12 +30,23 @@ func (e *ExternalTMDB) SearchMovies(r *http.Request, query string, year int) ([]
 	return e.Client.SearchMovies(r.Context(), query, year)
 }
 
+// RouterOptions configures HTTP middleware behaviour.
+type RouterOptions struct {
+	// TrustedProxy enables trusting X-Forwarded-For for client IP extraction (rate limiting).
+	TrustedProxy bool
+}
+
 // NewRouter builds the complete HTTP mux with all routes and middleware.
 // Public auth routes: 5 req/s per IP, burst 20.
 // Protected API routes: same rate limit, all behind JWT middleware.
-func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
+func NewRouter(svcs Services, jwtSecret []byte, opts ...RouterOptions) http.Handler {
+	var opt RouterOptions
+	if len(opts) > 0 {
+		opt = opts[0]
+	}
+
 	mux := http.NewServeMux()
-	rl := RateLimiter(rate.Limit(5), 20)
+	rl := RateLimiter(rate.Limit(5), 20, opt.TrustedProxy)
 	auth := func(h http.Handler) http.Handler { return rl(JWTMiddleware(jwtSecret, h)) }
 
 	mux.HandleFunc("GET /health", healthHandler)
@@ -88,5 +99,5 @@ func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
 		mux.Handle("PUT /api/v1/backup", auth(http.HandlerFunc(bh.importSnapshot)))
 	}
 
-	return mux
+	return SecurityHeaders(mux)
 }

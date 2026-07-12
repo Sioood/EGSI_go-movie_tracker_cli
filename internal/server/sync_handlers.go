@@ -18,6 +18,7 @@ type syncPayload struct {
 	Movies          []domain.Movie      `json:"movies"`
 	WatchEntries    []domain.WatchEntry `json:"watch_entries"`
 	DeletedMovieIDs []string            `json:"deleted_movie_ids"`
+	SourceDeviceID  string              `json:"source_device_id,omitempty"`
 	SyncedAt        time.Time           `json:"synced_at"`
 }
 

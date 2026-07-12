@@ -20,12 +20,14 @@ import (
 	"github.com/movietracker/movie-tracker/internal/version"
 )
 
+const minJWTSecretBytes = 32
+
 func main() {
 	logger := logging.New("server")
 
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-	if len(jwtSecret) == 0 {
-		logger.Error("JWT_SECRET environment variable is required")
+	if len(jwtSecret) < minJWTSecretBytes {
+		logger.Error("JWT_SECRET must be at least 32 bytes", "length", len(jwtSecret))
 		os.Exit(1)
 	}
 
@@ -85,6 +87,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	trustedProxy := os.Getenv("TRUSTED_PROXY") == "true" || os.Getenv("TRUSTED_PROXY") == "1"
+
 	srv := &http.Server{
 		Handler: server.NewRouter(server.Services{
 			Auth:    authSvc,
@@ -92,7 +96,7 @@ func main() {
 			Stats:   statsSvc,
 			Backups: backupSvc,
 			TMDB:    externalTMDB,
-		}, jwtSecret),
+		}, jwtSecret, server.RouterOptions{TrustedProxy: trustedProxy}),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,

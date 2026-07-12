@@ -43,6 +43,12 @@ type Session struct {
 	Email        string `json:"email"`
 }
 
+// WithoutSecrets returns a copy with values that must not be stored on the server.
+func (c Config) WithoutSecrets() Config {
+	c.TMDBAPIKey = ""
+	return c
+}
+
 // DefaultConfig returns the initial preferences when no config file exists.
 func DefaultConfig() Config {
 	return Config{

@@ -71,6 +71,33 @@ func TestBackupRoundTripSnapshot(t *testing.T) {
 	}
 }
 
+func TestBackupStripsTMDBAPIKey(t *testing.T) {
+	router := newFullRouter(t)
+	token := registerAndLogin(t, router, "backup-tmdb")
+
+	rr := authPut(t, router, "/api/v1/backup/config", token, map[string]any{
+		"theme":        "solar",
+		"server_url":   "http://prod.example.com",
+		"offline_mode": false,
+		"tmdb_api_key": "super-secret-tmdb-key",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("import config: want 200, got %d: %s", rr.Code, rr.Body)
+	}
+
+	rr = authGet(t, router, "/api/v1/backup/config", token)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("export config: want 200, got %d: %s", rr.Code, rr.Body)
+	}
+	var cfg config.Config
+	if err := json.NewDecoder(rr.Body).Decode(&cfg); err != nil {
+		t.Fatalf("decode config: %v", err)
+	}
+	if cfg.TMDBAPIKey != "" {
+		t.Fatalf("expected TMDB API key to be stripped, got %q", cfg.TMDBAPIKey)
+	}
+}
+
 func TestBackupCrossUserIsolation(t *testing.T) {
 	router := newFullRouter(t)
 	tokenA := registerAndLogin(t, router, "backup-a")

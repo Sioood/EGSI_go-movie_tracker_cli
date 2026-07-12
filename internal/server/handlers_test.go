@@ -74,6 +74,15 @@ func TestRegisterSuccess(t *testing.T) {
 	}
 }
 
+func TestRegisterRejectsUnknownFields(t *testing.T) {
+	rr := postJSON(t, newTestRouter(t), "/api/register", map[string]string{
+		"email": "alice@example.com", "password": "secret123", "is_admin": "true",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 for unknown JSON field, got %d: %s", rr.Code, rr.Body)
+	}
+}
+
 func TestRegisterDuplicateEmail(t *testing.T) {
 	router := newTestRouter(t)
 	postJSON(t, router, "/api/register", map[string]string{

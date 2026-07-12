@@ -36,10 +36,11 @@ func (s *BackupService) ExportConfig(ctx context.Context, userID string) (config
 	if backup.Config == "" || backup.Config == "{}" {
 		return config.DefaultConfig(), nil
 	}
-	return cfg, nil
+	return cfg.WithoutSecrets(), nil
 }
 
 func (s *BackupService) ImportConfig(ctx context.Context, userID string, cfg config.Config) error {
+	cfg = cfg.WithoutSecrets()
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
@@ -91,10 +92,12 @@ func (s *BackupService) ExportSnapshot(ctx context.Context, userID string) (Back
 	} else {
 		snapshot.State = config.DefaultState()
 	}
+	snapshot.Config = snapshot.Config.WithoutSecrets()
 	return snapshot, nil
 }
 
 func (s *BackupService) ImportSnapshot(ctx context.Context, userID string, snapshot BackupSnapshot) error {
+	snapshot.Config = snapshot.Config.WithoutSecrets()
 	configJSON, err := json.Marshal(snapshot.Config)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)

@@ -31,9 +31,20 @@ func JWTMiddleware(secret []byte, next http.Handler) http.Handler {
 	})
 }
 
+// SecurityHeaders adds baseline HTTP security headers to every response.
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RateLimiter returns a per-IP rate-limiting middleware.
 // Each unique IP is allowed up to burst requests immediately, then rps per second.
-func RateLimiter(rps rate.Limit, burst int) func(http.Handler) http.Handler {
+// When trustedProxy is false, X-Forwarded-For is ignored to prevent spoofing.
+func RateLimiter(rps rate.Limit, burst int, trustedProxy bool) func(http.Handler) http.Handler {
 	type entry struct {
 		limiter  *rate.Limiter
 		lastSeen time.Time
@@ -71,7 +82,7 @@ func RateLimiter(rps rate.Limit, burst int) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !getLimiter(clientIP(r)).Allow() {
+			if !getLimiter(clientIP(r, trustedProxy)).Allow() {
 				writeError(w, http.StatusTooManyRequests, "trop de requêtes")
 				return
 			}
@@ -80,12 +91,14 @@ func RateLimiter(rps rate.Limit, burst int) func(http.Handler) http.Handler {
 	}
 }
 
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if idx := strings.Index(xff, ","); idx >= 0 {
-			return strings.TrimSpace(xff[:idx])
+func clientIP(r *http.Request, trustedProxy bool) string {
+	if trustedProxy {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			if idx := strings.Index(xff, ","); idx >= 0 {
+				return strings.TrimSpace(xff[:idx])
+			}
+			return strings.TrimSpace(xff)
 		}
-		return strings.TrimSpace(xff)
 	}
 	addr := r.RemoteAddr
 	if idx := strings.LastIndex(addr, ":"); idx >= 0 {

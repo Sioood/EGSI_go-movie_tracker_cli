@@ -7,6 +7,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       ADDR: ${ADDR:-:8080}
       DB_PATH: ${DB_PATH:-/data/server.db}
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-false}
     volumes:
       - server-data:/data
     healthcheck:
