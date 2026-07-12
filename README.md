@@ -8,13 +8,36 @@ Application terminal en Go pour suivre ses films, avec synchronisation hybride l
 - [golangci-lint](https://golangci-lint.run/) (pour `make lint`)
 - Docker + Docker Compose (optionnel, pour le serveur API)
 
+## Quality gate
+
+Avant chaque commit ou PR :
+
+```bash
+make check        # fmt-check, vet, test, test-race, lint, deadcode
+make cover-check  # couverture >= 50 % (packages testables, hors cmd/*)
+```
+
+| Étape | Commande | Rôle |
+|-------|----------|------|
+| Format | `make fmt-check` / `make fmt` | Vérifie ou applique `gofmt` + `goimports` |
+| Vet | `make vet` | Analyse `go vet` |
+| Tests | `make test` | Tests unitaires et d'intégration |
+| Concurrence | `make test-race` | Détecteur de data races |
+| Lint | `make lint` | golangci-lint (`.golangci.yml`) |
+| Dead code | `make deadcode` | Symboles inatteignables |
+| Couverture | `make cover` / `make cover-check` | Rapport et seuil minimal |
+
+La CI GitHub reproduit ces vérifications (`.github/workflows/ci.yml`).
+
+Outils épinglés : `go.mod` (`tool`) et `tools/tools.go`. Style : `.editorconfig`. Hooks optionnels : `pre-commit install`.
+
 ## Installation rapide
 
 ### Depuis les sources
 
 ```bash
 make build
-make test
+make check
 ```
 
 ### Depuis GitHub Releases
@@ -129,9 +152,17 @@ Guide Coolify / VPS : [docs/DEPLOY.md](docs/DEPLOY.md)
 
 | Commande | Description |
 |----------|-------------|
-| `make build` | Compile CLI et serveur |
+| `make check` | Quality gate : fmt-check, vet, test, test-race, lint, deadcode |
+| `make cover` | Rapport de couverture (`coverage.out`) |
+| `make cover-check` | Échoue si couverture < 50 % |
+| `make fmt` | Formate le code (`gofmt` + `goimports`) |
+| `make fmt-check` | Vérifie le formatage sans modifier les fichiers |
+| `make vet` | `go vet ./...` |
 | `make test` | Lance tous les tests |
+| `make test-race` | Tests avec `-race` |
 | `make lint` | Analyse statique (golangci-lint) |
+| `make deadcode` | Détecte le code mort |
+| `make build` | Compile CLI et serveur |
 | `make run-cli` | Build + lance la TUI |
 | `make run-server` | Build + lance l'API |
 | `make docker-up` | Démarre le serveur via Docker Compose |

@@ -2,28 +2,43 @@
 
 Tests manuels reproductibles avant release. Cocher chaque scénario après validation.
 
-## Validation automatisée (2026-07-08)
+## Validation automatisée (2026-07-12)
 
-Exécutée localement après l'audit phases 0–10 :
+Quality gate locale (équivalent CI) :
 
-| Vérification | Commande | Résultat |
-|--------------|----------|----------|
-| Tests unitaires/intégration | `make test` | 79 tests OK (16 packages) |
-| Lint | `make lint` | 0 issues |
-| Build | `make build` | OK |
+```bash
+make check        # fmt-check + vet + test + test-race + lint + deadcode
+make cover-check  # couverture >= 50 % (hors cmd/* et wiring)
+```
+
+| Vérification | Commande | Résultat attendu |
+|--------------|----------|------------------|
+| Quality gate complet | `make check` | Toutes les étapes vertes |
+| Formatage Go | `make fmt-check` | Aucun fichier listé par `gofmt -l` |
+| Formatage auto | `make fmt` | `gofmt` + `goimports` sur tout le repo |
+| Analyse statique | `make vet` | 0 problème |
+| Tests | `make test` | Tous les tests OK |
+| Race detector | `make test-race` | Aucune data race |
+| Lint | `make lint` | 0 issue golangci-lint |
+| Dead code | `make deadcode` | Aucun symbole mort (`deadcode -test`) |
+| Couverture | `make cover-check` | ≥ 50 % (packages testables) |
+| Build | `make build` | Binaires dans `bin/` |
 | Health serveur | `curl /health` | `{"status":"ok","version":"1.0.0"}` |
 | Register API | `POST /api/register` | 201 + tokens |
 | Movies sans auth | `GET /api/v1/movies` | 401 |
 | JWT typ claim | tests `TestAccessTokenCannotRefresh`, `TestRefreshTokenCannotAccessProtectedRoute` | OK |
-| Rate limiting | test `TestRateLimitReturns429` | OK |
+| Rate limiting | tests `TestRateLimitReturns429`, proxy de confiance | OK |
+| Backup TMDB key | test `TestBackupStripsTMDBAPIKey` | Clé exclue côté serveur |
+
+La CI GitHub (`.github/workflows/ci.yml`) exécute les mêmes vérifications sur chaque push/PR.
 
 Les scénarios TUI interactifs ci-dessous restent **manuels** (nécessitent `make run-cli`).
 
 **Prérequis communs :**
 
 ```bash
+make check        # recommandé avant toute session E2E
 make build
-make test
 export JWT_SECRET="test-secret-e2e-min-32-chars-long"
 make run-server   # terminal 1
 make run-cli      # terminal 2
@@ -276,9 +291,9 @@ curl -s http://localhost:8080/health
 ## Validation finale
 
 ```bash
-make lint   # 0 issues
-make test   # tous verts
+make check        # quality gate complet (fmt, vet, tests, race, lint, deadcode)
+make cover-check  # seuil de couverture 50 %
 make build
 ```
 
-- **Statut global v1.0** : [x] validation automatisée OK (2026-07-08) — scénarios TUI manuels à cocher avant release utilisateur
+- **Statut global v1.0** : [x] validation automatisée OK (2026-07-12) — scénarios TUI manuels à cocher avant release utilisateur

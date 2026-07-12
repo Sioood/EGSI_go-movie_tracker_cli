@@ -1,0 +1,29 @@
+# Hooks locaux optionnels — installer avec : pre-commit install
+# Voir https://pre-commit.com/
+
+repos:
+  - repo: local
+    hooks:
+      - id: go-fmt-check
+        name: gofmt check
+        entry: make fmt-check
+        language: system
+        pass_filenames: false
+
+      - id: go-vet
+        name: go vet
+        entry: make vet
+        language: system
+        pass_filenames: false
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: make lint
+        language: system
+        pass_filenames: false
+
+      - id: go-deadcode
+        name: deadcode
+        entry: make deadcode
+        language: system
+        pass_filenames: false
