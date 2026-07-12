@@ -17,7 +17,7 @@ func formatTime(t time.Time) string {
 func parseTime(value string) (time.Time, error) {
 	t, err := time.Parse(sqliteTimeLayout, value)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: parse time: %v", apperrors.ErrDB, err)
+		return time.Time{}, fmt.Errorf("%w: parse time: %w", apperrors.ErrDB, err)
 	}
 	return t, nil
 }

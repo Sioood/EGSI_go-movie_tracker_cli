@@ -73,7 +73,9 @@ func (h *HybridClient) CreateMovie(ctx context.Context, movie domain.Movie) (dom
 	if err != nil {
 		return domain.Movie{}, err
 	}
-	_ = h.sync.MarkMoviePending(ctx, created.ID)
+	if err := h.sync.MarkMoviePending(ctx, created.ID); err != nil {
+		return domain.Movie{}, err
+	}
 	h.maybeSync()
 	return created, nil
 }
@@ -96,7 +98,9 @@ func (h *HybridClient) UpdateMovie(ctx context.Context, movie domain.Movie) (dom
 	if err != nil {
 		return domain.Movie{}, err
 	}
-	_ = h.sync.MarkMoviePending(ctx, updated.ID)
+	if err := h.sync.MarkMoviePending(ctx, updated.ID); err != nil {
+		return domain.Movie{}, err
+	}
 	h.maybeSync()
 	return updated, nil
 }
@@ -118,7 +122,9 @@ func (h *HybridClient) SaveWatchEntry(ctx context.Context, entry domain.WatchEnt
 	if err != nil {
 		return domain.WatchEntry{}, err
 	}
-	_ = h.sync.MarkWatchEntryPending(ctx, saved.MovieID)
+	if err := h.sync.MarkWatchEntryPending(ctx, saved.MovieID); err != nil {
+		return domain.WatchEntry{}, err
+	}
 	h.maybeSync()
 	return saved, nil
 }

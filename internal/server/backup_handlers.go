@@ -17,7 +17,7 @@ func (h *backupHandler) exportConfig(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	cfg, err := h.backups.ExportConfig(r.Context(), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "backup export config", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, cfg)
@@ -33,7 +33,7 @@ func (h *backupHandler) importConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.backups.ImportConfig(r.Context(), claims.UserID, body); err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "backup import config", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -44,7 +44,7 @@ func (h *backupHandler) exportState(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	state, err := h.backups.ExportState(r.Context(), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "backup export config", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, state)
@@ -60,7 +60,7 @@ func (h *backupHandler) importState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.backups.ImportState(r.Context(), claims.UserID, body); err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "backup import state", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -71,7 +71,7 @@ func (h *backupHandler) exportSnapshot(w http.ResponseWriter, r *http.Request) {
 	claims, _ := claimsFromContext(r.Context())
 	snapshot, err := h.backups.ExportSnapshot(r.Context(), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "backup export config", err)
 		return
 	}
 	if snapshot.SyncedAt.IsZero() {
@@ -90,7 +90,7 @@ func (h *backupHandler) importSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.backups.ImportSnapshot(r.Context(), claims.UserID, body); err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "backup import snapshot", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

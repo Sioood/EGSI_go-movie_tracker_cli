@@ -1,11 +1,8 @@
 package server
 
 import (
-	"encoding/json"
-	"errors"
 	"net/http"
 
-	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/service"
 )
 
@@ -83,27 +80,4 @@ func (h *authHandler) me(w http.ResponseWriter, r *http.Request) {
 		"id":    claims.UserID,
 		"email": claims.Email,
 	})
-}
-
-func writeAuthError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, apperrors.ErrValidation):
-		writeError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, apperrors.ErrEmailAlreadyExists):
-		writeError(w, http.StatusConflict, "email déjà utilisé")
-	case errors.Is(err, apperrors.ErrInvalidCredentials):
-		writeError(w, http.StatusUnauthorized, "identifiants invalides")
-	default:
-		writeError(w, http.StatusInternalServerError, "erreur interne")
-	}
-}
-
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, map[string]string{"error": msg})
 }

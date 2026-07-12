@@ -36,7 +36,7 @@ func (r *MovieRepository) Create(ctx context.Context, movie domain.Movie) (domai
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
 	if err != nil {
-		return domain.Movie{}, fmt.Errorf("%w: create movie: %v", apperrors.ErrDB, err)
+		return domain.Movie{}, fmt.Errorf("%w: create movie: %w", apperrors.ErrDB, err)
 	}
 
 	return movie, nil
@@ -54,7 +54,7 @@ func (r *MovieRepository) GetByID(ctx context.Context, id string) (domain.Movie,
 		return domain.Movie{}, fmt.Errorf("%w: id %s", apperrors.ErrMovieNotFound, id)
 	}
 	if err != nil {
-		return domain.Movie{}, fmt.Errorf("%w: get movie: %v", apperrors.ErrDB, err)
+		return domain.Movie{}, fmt.Errorf("%w: get movie: %w", apperrors.ErrDB, err)
 	}
 
 	return movie, nil
@@ -77,7 +77,7 @@ func (r *MovieRepository) GetByExternalID(ctx context.Context, userID, externalI
 		return domain.Movie{}, fmt.Errorf("%w: external id %s", apperrors.ErrMovieNotFound, externalID)
 	}
 	if err != nil {
-		return domain.Movie{}, fmt.Errorf("%w: get movie by external id: %v", apperrors.ErrDB, err)
+		return domain.Movie{}, fmt.Errorf("%w: get movie by external id: %w", apperrors.ErrDB, err)
 	}
 	return movie, nil
 }
@@ -134,7 +134,7 @@ func (r *MovieRepository) Search(ctx context.Context, params domain.MovieSearchP
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("%w: search movies: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: search movies: %w", apperrors.ErrDB, err)
 	}
 	defer rows.Close()
 
@@ -142,12 +142,12 @@ func (r *MovieRepository) Search(ctx context.Context, params domain.MovieSearchP
 	for rows.Next() {
 		movie, err := scanMovie(rows)
 		if err != nil {
-			return nil, fmt.Errorf("%w: scan movie: %v", apperrors.ErrDB, err)
+			return nil, fmt.Errorf("%w: scan movie: %w", apperrors.ErrDB, err)
 		}
 		movies = append(movies, movie)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate movies: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: iterate movies: %w", apperrors.ErrDB, err)
 	}
 
 	return movies, nil
@@ -169,12 +169,12 @@ func (r *MovieRepository) Update(ctx context.Context, movie domain.Movie) (domai
 		WHERE id = ?
 	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.UpdatedAt), movie.ID)
 	if err != nil {
-		return domain.Movie{}, fmt.Errorf("%w: update movie: %v", apperrors.ErrDB, err)
+		return domain.Movie{}, fmt.Errorf("%w: update movie: %w", apperrors.ErrDB, err)
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return domain.Movie{}, fmt.Errorf("%w: update movie rows affected: %v", apperrors.ErrDB, err)
+		return domain.Movie{}, fmt.Errorf("%w: update movie rows affected: %w", apperrors.ErrDB, err)
 	}
 	if count == 0 {
 		return domain.Movie{}, fmt.Errorf("%w: id %s", apperrors.ErrMovieNotFound, movie.ID)
@@ -186,12 +186,12 @@ func (r *MovieRepository) Update(ctx context.Context, movie domain.Movie) (domai
 func (r *MovieRepository) Delete(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(ctx, `DELETE FROM movies WHERE id = ?`, id)
 	if err != nil {
-		return fmt.Errorf("%w: delete movie: %v", apperrors.ErrDB, err)
+		return fmt.Errorf("%w: delete movie: %w", apperrors.ErrDB, err)
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%w: delete movie rows affected: %v", apperrors.ErrDB, err)
+		return fmt.Errorf("%w: delete movie rows affected: %w", apperrors.ErrDB, err)
 	}
 	if count == 0 {
 		return fmt.Errorf("%w: id %s", apperrors.ErrMovieNotFound, id)
@@ -221,7 +221,7 @@ func (r *MovieRepository) SyncUpsert(ctx context.Context, movie domain.Movie) (d
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		`, movie.ID, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.CreatedAt), formatTime(movie.UpdatedAt))
 		if err != nil {
-			return domain.Movie{}, false, fmt.Errorf("%w: sync insert movie: %v", apperrors.ErrDB, err)
+			return domain.Movie{}, false, fmt.Errorf("%w: sync insert movie: %w", apperrors.ErrDB, err)
 		}
 		return movie, true, nil
 	}
@@ -239,7 +239,7 @@ func (r *MovieRepository) SyncUpsert(ctx context.Context, movie domain.Movie) (d
 		WHERE id = ?
 	`, movie.UserID, movie.Title, movie.Year, movie.ExternalID, movie.UpdatedByDevice, formatTime(movie.UpdatedAt), movie.ID)
 	if err != nil {
-		return domain.Movie{}, false, fmt.Errorf("%w: sync update movie: %v", apperrors.ErrDB, err)
+		return domain.Movie{}, false, fmt.Errorf("%w: sync update movie: %w", apperrors.ErrDB, err)
 	}
 
 	updated, err := r.GetByID(ctx, movie.ID)

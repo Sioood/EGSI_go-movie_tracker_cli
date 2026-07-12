@@ -58,13 +58,13 @@ func (c *ExternalClient) SearchMovies(ctx context.Context, accessToken, query st
 
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return nil, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("%w: read external search response: %v", apperrors.ErrNetwork, err)
+		return nil, fmt.Errorf("%w: read external search response: %w", apperrors.ErrNetwork, err)
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {

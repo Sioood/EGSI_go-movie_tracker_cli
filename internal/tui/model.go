@@ -313,10 +313,10 @@ func (m Model) handleAuthResult(msg authResultMsg) (tea.Model, tea.Cmd) {
 	m.state.Session = msg.session
 	m.state.Config.OfflineMode = false
 	if m.saveSession != nil {
-		_ = m.saveSession(msg.session)
+		logPersistError("save session", m.saveSession(msg.session))
 	}
 	if m.saveConfig != nil {
-		_ = m.saveConfig(m.state.Config)
+		logPersistError("save config after auth", m.saveConfig(m.state.Config))
 	}
 
 	switch msg.action {
@@ -581,14 +581,14 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.setMessage(messages.KindInfo, fmt.Sprintf(messages.UI.OfflineToggleHint, label))
 		if m.saveConfig != nil {
-			_ = m.saveConfig(m.state.Config)
+			logPersistError("save config", m.saveConfig(m.state.Config))
 		}
 		return m, nil
 	case "d":
 		if m.state.Session.Authenticated {
 			m.state.Session = SessionState{}
 			if m.clearSession != nil {
-				_ = m.clearSession()
+				logPersistError("clear session", m.clearSession())
 			}
 			m.syncStatus = SyncStatusIdle
 			m.syncError = ""

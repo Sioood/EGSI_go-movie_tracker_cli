@@ -21,7 +21,7 @@ func (h *syncHandler) export(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.movies.ListMoviesWithEntries(r.Context(), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "sync export", err)
 		return
 	}
 
@@ -58,22 +58,29 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if err != nil {
-			continue
+			writeInternalError(w, "sync import delete lookup", err)
+			return
 		}
 		if movie.UserID != claims.UserID {
 			continue
 		}
-		if err := h.movies.DeleteMovie(r.Context(), id); err == nil {
-			deleted++
+		if err := h.movies.DeleteMovie(r.Context(), id); err != nil {
+			writeInternalError(w, "sync import delete", err)
+			return
 		}
+		deleted++
 	}
 
 	syncedMovieIDs := make(map[string]bool, len(body.Movies))
+	syncedMovies := 0
 	for _, m := range body.Movies {
 		saved, _, err := h.movies.SyncUpsertMovie(r.Context(), claims.UserID, m)
-		if err == nil {
-			syncedMovieIDs[saved.ID] = true
+		if err != nil {
+			writeInternalError(w, "sync import movie", err)
+			return
 		}
+		syncedMovieIDs[saved.ID] = true
+		syncedMovies++
 	}
 
 	syncedEntries := 0
@@ -81,13 +88,15 @@ func (h *syncHandler) importData(w http.ResponseWriter, r *http.Request) {
 		if !syncedMovieIDs[e.MovieID] {
 			continue
 		}
-		if _, _, err := h.movies.SyncUpsertWatchEntry(r.Context(), e); err == nil {
-			syncedEntries++
+		if _, _, err := h.movies.SyncUpsertWatchEntry(r.Context(), e); err != nil {
+			writeInternalError(w, "sync import watch entry", err)
+			return
 		}
+		syncedEntries++
 	}
 
 	writeJSON(w, http.StatusOK, syncdto.ImportResult{
-		SyncedMovies:       len(syncedMovieIDs),
+		SyncedMovies:       syncedMovies,
 		SyncedWatchEntries: syncedEntries,
 		DeletedMovies:      deleted,
 	})

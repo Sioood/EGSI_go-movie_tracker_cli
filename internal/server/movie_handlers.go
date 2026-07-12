@@ -1,11 +1,9 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
-	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/domain"
 	"github.com/movietracker/movie-tracker/internal/service"
 )
@@ -215,19 +213,4 @@ func (h *movieHandler) watch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, movieWithEntry{Movie: movie, WatchEntry: &entry})
-}
-
-func writeMovieError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, apperrors.ErrMovieNotFound):
-		writeError(w, http.StatusNotFound, "film introuvable")
-	case errors.Is(err, apperrors.ErrForbidden):
-		writeError(w, http.StatusForbidden, "accès interdit")
-	case errors.Is(err, apperrors.ErrValidation):
-		writeError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, apperrors.ErrInvalidRating):
-		writeError(w, http.StatusBadRequest, err.Error())
-	default:
-		writeError(w, http.StatusInternalServerError, "erreur interne")
-	}
 }

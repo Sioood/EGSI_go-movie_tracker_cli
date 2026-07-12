@@ -39,7 +39,7 @@ func (r *UserRepository) Create(ctx context.Context, user domain.User) (domain.U
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return domain.User{}, fmt.Errorf("%w: %s", apperrors.ErrEmailAlreadyExists, user.Email)
 		}
-		return domain.User{}, fmt.Errorf("%w: create user: %v", apperrors.ErrDB, err)
+		return domain.User{}, fmt.Errorf("%w: create user: %w", apperrors.ErrDB, err)
 	}
 
 	return user, nil
@@ -78,7 +78,7 @@ func scanUser(s userScanner) (domain.User, error) {
 		return domain.User{}, apperrors.ErrUserNotFound
 	}
 	if err != nil {
-		return domain.User{}, fmt.Errorf("%w: scan user: %v", apperrors.ErrDB, err)
+		return domain.User{}, fmt.Errorf("%w: scan user: %w", apperrors.ErrDB, err)
 	}
 
 	ct, err := parseTime(createdAt)

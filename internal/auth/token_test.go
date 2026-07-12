@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -41,7 +42,7 @@ func TestAccessTokenRejectedAsRefresh(t *testing.T) {
 	}
 
 	_, err = ParseRefreshToken(access, secret)
-	if err != ErrWrongTokenType {
+	if !errors.Is(err, ErrWrongTokenType) {
 		t.Fatalf("want ErrWrongTokenType, got %v", err)
 	}
 }
@@ -54,7 +55,7 @@ func TestRefreshTokenRejectedAsAccess(t *testing.T) {
 	}
 
 	_, err = ParseAccessToken(refresh, secret)
-	if err != ErrWrongTokenType {
+	if !errors.Is(err, ErrWrongTokenType) {
 		t.Fatalf("want ErrWrongTokenType, got %v", err)
 	}
 }
@@ -68,7 +69,7 @@ func TestExpiredTokenRejected(t *testing.T) {
 	}
 
 	_, err = ParseAccessToken(expired, secret)
-	if err != ErrInvalidToken {
+	if !errors.Is(err, ErrInvalidToken) {
 		t.Fatalf("want ErrInvalidToken, got %v", err)
 	}
 }

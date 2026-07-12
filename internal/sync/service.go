@@ -5,16 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/movietracker/movie-tracker/internal/apperrors"
 	"github.com/movietracker/movie-tracker/internal/client"
 	"github.com/movietracker/movie-tracker/internal/domain"
+	"github.com/movietracker/movie-tracker/internal/logging"
 	"github.com/movietracker/movie-tracker/internal/repository"
 	"github.com/movietracker/movie-tracker/internal/service"
 )
 
 const LocalUserID = "local-user"
+
+var syncLog = logging.New("sync")
 
 // SessionAccess holds tokens required for remote sync.
 type SessionAccess struct {
@@ -111,13 +115,19 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 		result.PushedWatchEntries = importResult.SyncedWatchEntries
 
 		for _, id := range pushedIDs {
-			_ = s.syncRepo.ClearPending(ctx, repository.PendingEntityMovie, id)
+			if err := s.syncRepo.ClearPending(ctx, repository.PendingEntityMovie, id); err != nil {
+				syncLog.Warn("clear pending movie", slog.String("id", id), slog.Any("err", err))
+			}
 		}
 		for _, id := range deletedIDs {
-			_ = s.syncRepo.ClearPending(ctx, repository.PendingEntityDelete, id)
+			if err := s.syncRepo.ClearPending(ctx, repository.PendingEntityDelete, id); err != nil {
+				syncLog.Warn("clear pending delete", slog.String("id", id), slog.Any("err", err))
+			}
 		}
 		for _, entry := range pushPayload.WatchEntries {
-			_ = s.syncRepo.ClearPending(ctx, repository.PendingEntityWatchEntry, entry.MovieID)
+			if err := s.syncRepo.ClearPending(ctx, repository.PendingEntityWatchEntry, entry.MovieID); err != nil {
+				syncLog.Warn("clear pending watch entry", slog.String("movie_id", entry.MovieID), slog.Any("err", err))
+			}
 		}
 
 		remote, err := s.syncClient.Export(ctx, access)
@@ -138,7 +148,9 @@ func (s *Service) Run(ctx context.Context) (Result, error) {
 			return err
 		}
 		if remote.SourceDeviceID != "" {
-			_ = s.syncRepo.UpsertDevice(ctx, remote.SourceDeviceID, "")
+			if err := s.syncRepo.UpsertDevice(ctx, remote.SourceDeviceID, ""); err != nil {
+				syncLog.Warn("upsert remote device", slog.String("device_id", remote.SourceDeviceID), slog.Any("err", err))
+			}
 		}
 
 		for _, movie := range remote.Movies {

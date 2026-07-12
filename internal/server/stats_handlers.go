@@ -16,7 +16,7 @@ func (h *statsHandler) get(w http.ResponseWriter, r *http.Request) {
 
 	s, err := h.stats.GetStats(r.Context(), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "erreur interne")
+		writeInternalError(w, "stats get", err)
 		return
 	}
 

@@ -25,7 +25,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 	if err := r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM movies WHERE user_id = ?`, userID,
 	).Scan(&stats.TotalMovies); err != nil {
-		return domain.Stats{}, fmt.Errorf("%w: count movies: %v", apperrors.ErrDB, err)
+		return domain.Stats{}, fmt.Errorf("%w: count movies: %w", apperrors.ErrDB, err)
 	}
 
 	// Watched count, rated count, average rating
@@ -39,7 +39,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 		LEFT JOIN watch_entries w ON w.movie_id = m.id
 		WHERE m.user_id = ?
 	`, userID).Scan(&stats.TotalWatched, &stats.TotalRated, &avgRating); err != nil {
-		return domain.Stats{}, fmt.Errorf("%w: aggregate stats: %v", apperrors.ErrDB, err)
+		return domain.Stats{}, fmt.Errorf("%w: aggregate stats: %w", apperrors.ErrDB, err)
 	}
 	if avgRating.Valid {
 		stats.AverageRating = avgRating.Float64
@@ -55,7 +55,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 		LIMIT 3
 	`, userID)
 	if err != nil {
-		return domain.Stats{}, fmt.Errorf("%w: best movies: %v", apperrors.ErrDB, err)
+		return domain.Stats{}, fmt.Errorf("%w: best movies: %w", apperrors.ErrDB, err)
 	}
 	defer bestRows.Close()
 	stats.BestMovies, err = scanMovieRatings(bestRows)
@@ -73,7 +73,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 		LIMIT 3
 	`, userID)
 	if err != nil {
-		return domain.Stats{}, fmt.Errorf("%w: worst movies: %v", apperrors.ErrDB, err)
+		return domain.Stats{}, fmt.Errorf("%w: worst movies: %w", apperrors.ErrDB, err)
 	}
 	defer worstRows.Close()
 	stats.WorstMovies, err = scanMovieRatings(worstRows)
@@ -93,7 +93,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 		ORDER BY yr ASC, mo ASC
 	`, userID)
 	if err != nil {
-		return domain.Stats{}, fmt.Errorf("%w: monthly histogram: %v", apperrors.ErrDB, err)
+		return domain.Stats{}, fmt.Errorf("%w: monthly histogram: %w", apperrors.ErrDB, err)
 	}
 	defer histRows.Close()
 
@@ -101,7 +101,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 		var yearStr, monthStr string
 		var count int
 		if err := histRows.Scan(&yearStr, &monthStr, &count); err != nil {
-			return domain.Stats{}, fmt.Errorf("%w: scan histogram row: %v", apperrors.ErrDB, err)
+			return domain.Stats{}, fmt.Errorf("%w: scan histogram row: %w", apperrors.ErrDB, err)
 		}
 		t, err := time.Parse("2006-01", yearStr+"-"+monthStr)
 		if err != nil {
@@ -114,7 +114,7 @@ func (r *StatsRepository) GetStats(ctx context.Context, userID string) (domain.S
 		})
 	}
 	if err := histRows.Err(); err != nil {
-		return domain.Stats{}, fmt.Errorf("%w: iterate histogram: %v", apperrors.ErrDB, err)
+		return domain.Stats{}, fmt.Errorf("%w: iterate histogram: %w", apperrors.ErrDB, err)
 	}
 
 	return stats, nil
@@ -129,7 +129,7 @@ func scanMovieRatings(rows *sql.Rows) ([]domain.MovieRating, error) {
 			&mr.Movie.ID, &mr.Movie.UserID, &mr.Movie.Title, &mr.Movie.Year,
 			&mr.Movie.ExternalID, &mr.Movie.UpdatedByDevice, &createdAt, &updatedAt, &mr.Rating,
 		); err != nil {
-			return nil, fmt.Errorf("%w: scan movie rating: %v", apperrors.ErrDB, err)
+			return nil, fmt.Errorf("%w: scan movie rating: %w", apperrors.ErrDB, err)
 		}
 		ct, err := parseTime(createdAt)
 		if err != nil {
@@ -144,7 +144,7 @@ func scanMovieRatings(rows *sql.Rows) ([]domain.MovieRating, error) {
 		result = append(result, mr)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate movie ratings: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: iterate movie ratings: %w", apperrors.ErrDB, err)
 	}
 	return result, nil
 }

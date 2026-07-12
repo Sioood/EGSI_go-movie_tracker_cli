@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/movietracker/movie-tracker/internal/version"
@@ -13,8 +12,7 @@ type healthResponse struct {
 }
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(healthResponse{
+	writeJSON(w, http.StatusOK, healthResponse{
 		Status:  "ok",
 		Version: version.Version,
 	})

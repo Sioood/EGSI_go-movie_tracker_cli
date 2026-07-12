@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
+	"github.com/movietracker/movie-tracker/internal/logging"
 	"github.com/movietracker/movie-tracker/internal/tmdb"
 )
+
+var tmdbLog = logging.New("tmdb")
 
 // TMDBProxySearcher searches TMDB through the MovieTracker server proxy.
 type TMDBProxySearcher interface {
@@ -73,7 +77,9 @@ func (s *TMDBSearchService) SearchMovies(ctx context.Context, query string, year
 	}
 
 	if s.cache != nil {
-		_ = s.cache.CacheSearchResults(ctx, results)
+		if err := s.cache.CacheSearchResults(ctx, results); err != nil {
+			tmdbLog.Warn("cache TMDB search results", slog.Any("err", err))
+		}
 	}
 	return results, nil
 }

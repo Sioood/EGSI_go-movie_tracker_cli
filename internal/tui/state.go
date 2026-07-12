@@ -19,12 +19,12 @@ func (m *Model) persistState() {
 	if !m.lastSyncAt.IsZero() {
 		lastSync = m.lastSyncAt.UTC().Format(time.RFC3339)
 	}
-	_ = m.saveState(config.State{
+	logPersistError("persist state", m.saveState(config.State{
 		LastRoute:  string(m.route),
 		Filter:     string(m.filter),
 		Sort:       string(m.sort),
 		LastSyncAt: lastSync,
-	})
+	}))
 }
 
 // ParseRoute returns a valid route from persisted state.

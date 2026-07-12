@@ -44,13 +44,13 @@ func (c *SyncClient) client() *http.Client {
 func (c *SyncClient) Export(ctx context.Context, accessToken string) (SyncPayload, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/v1/sync", nil)
 	if err != nil {
-		return SyncPayload{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return SyncPayload{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return SyncPayload{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return SyncPayload{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 
@@ -63,7 +63,7 @@ func (c *SyncClient) Export(ctx context.Context, accessToken string) (SyncPayloa
 
 	var payload SyncPayload
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return SyncPayload{}, fmt.Errorf("%w: decode export: %v", apperrors.ErrNetwork, err)
+		return SyncPayload{}, fmt.Errorf("%w: decode export: %w", apperrors.ErrNetwork, err)
 	}
 	return payload, nil
 }
@@ -77,14 +77,14 @@ func (c *SyncClient) Import(ctx context.Context, accessToken string, payload Syn
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/api/v1/sync", bytes.NewReader(data))
 	if err != nil {
-		return ImportResult{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return ImportResult{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return ImportResult{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return ImportResult{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 
@@ -97,7 +97,7 @@ func (c *SyncClient) Import(ctx context.Context, accessToken string, payload Syn
 
 	var result ImportResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return ImportResult{}, fmt.Errorf("%w: decode import: %v", apperrors.ErrNetwork, err)
+		return ImportResult{}, fmt.Errorf("%w: decode import: %w", apperrors.ErrNetwork, err)
 	}
 	return result, nil
 }

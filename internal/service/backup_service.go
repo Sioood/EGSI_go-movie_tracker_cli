@@ -29,14 +29,7 @@ func (s *BackupService) ExportConfig(ctx context.Context, userID string) (config
 	if err != nil {
 		return config.Config{}, err
 	}
-	var cfg config.Config
-	if err := json.Unmarshal([]byte(backup.Config), &cfg); err != nil {
-		return config.DefaultConfig(), nil
-	}
-	if backup.Config == "" || backup.Config == "{}" {
-		return config.DefaultConfig(), nil
-	}
-	return cfg.WithoutSecrets(), nil
+	return parseStoredConfig(backup.Config)
 }
 
 func (s *BackupService) ImportConfig(ctx context.Context, userID string, cfg config.Config) error {
@@ -53,14 +46,7 @@ func (s *BackupService) ExportState(ctx context.Context, userID string) (config.
 	if err != nil {
 		return config.State{}, err
 	}
-	var state config.State
-	if err := json.Unmarshal([]byte(backup.State), &state); err != nil {
-		return config.DefaultState(), nil
-	}
-	if backup.State == "" || backup.State == "{}" {
-		return config.DefaultState(), nil
-	}
-	return state, nil
+	return parseStoredState(backup.State)
 }
 
 func (s *BackupService) ImportState(ctx context.Context, userID string, state config.State) error {
@@ -78,21 +64,20 @@ func (s *BackupService) ExportSnapshot(ctx context.Context, userID string) (Back
 	}
 
 	snapshot := BackupSnapshot{SyncedAt: backup.UpdatedAt}
-	if backup.UpdatedAt.IsZero() {
+	if snapshot.SyncedAt.IsZero() {
 		snapshot.SyncedAt = time.Now().UTC()
 	}
 
-	if backup.Config != "" && backup.Config != "{}" {
-		_ = json.Unmarshal([]byte(backup.Config), &snapshot.Config)
-	} else {
-		snapshot.Config = config.DefaultConfig()
+	cfg, err := parseStoredConfig(backup.Config)
+	if err != nil {
+		return BackupSnapshot{}, err
 	}
-	if backup.State != "" && backup.State != "{}" {
-		_ = json.Unmarshal([]byte(backup.State), &snapshot.State)
-	} else {
-		snapshot.State = config.DefaultState()
+	state, err := parseStoredState(backup.State)
+	if err != nil {
+		return BackupSnapshot{}, err
 	}
-	snapshot.Config = snapshot.Config.WithoutSecrets()
+	snapshot.Config = cfg
+	snapshot.State = state
 	return snapshot, nil
 }
 
@@ -107,4 +92,26 @@ func (s *BackupService) ImportSnapshot(ctx context.Context, userID string, snaps
 		return fmt.Errorf("marshal state: %w", err)
 	}
 	return s.repo.UpsertFull(ctx, userID, string(configJSON), string(stateJSON))
+}
+
+func parseStoredConfig(raw string) (config.Config, error) {
+	if raw == "" || raw == "{}" {
+		return config.DefaultConfig(), nil
+	}
+	var cfg config.Config
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return config.Config{}, fmt.Errorf("parse backup config: %w", err)
+	}
+	return cfg.WithoutSecrets(), nil
+}
+
+func parseStoredState(raw string) (config.State, error) {
+	if raw == "" || raw == "{}" {
+		return config.DefaultState(), nil
+	}
+	var state config.State
+	if err := json.Unmarshal([]byte(raw), &state); err != nil {
+		return config.State{}, fmt.Errorf("parse backup state: %w", err)
+	}
+	return state, nil
 }

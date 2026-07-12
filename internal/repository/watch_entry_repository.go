@@ -84,7 +84,7 @@ func (r *WatchEntryRepository) insertWatchEntry(ctx context.Context, entry domai
 			updated_at = excluded.updated_at
 	`, entry.ID, entry.MovieID, entry.Watched, entry.Rating, entry.RatingScale, entry.Review, watchedAt, entry.UpdatedByDevice, formatTime(entry.UpdatedAt))
 	if err != nil {
-		return domain.WatchEntry{}, false, fmt.Errorf("%w: sync upsert watch entry: %v", apperrors.ErrDB, err)
+		return domain.WatchEntry{}, false, fmt.Errorf("%w: sync upsert watch entry: %w", apperrors.ErrDB, err)
 	}
 
 	saved, err := r.GetByMovieID(ctx, entry.MovieID)
@@ -100,7 +100,7 @@ func (r *WatchEntryRepository) ListAll(ctx context.Context) ([]domain.WatchEntry
 		FROM watch_entries
 	`)
 	if err != nil {
-		return nil, fmt.Errorf("%w: list watch entries: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: list watch entries: %w", apperrors.ErrDB, err)
 	}
 	defer rows.Close()
 
@@ -108,12 +108,12 @@ func (r *WatchEntryRepository) ListAll(ctx context.Context) ([]domain.WatchEntry
 	for rows.Next() {
 		entry, err := scanWatchEntry(rows)
 		if err != nil {
-			return nil, fmt.Errorf("%w: scan watch entry: %v", apperrors.ErrDB, err)
+			return nil, fmt.Errorf("%w: scan watch entry: %w", apperrors.ErrDB, err)
 		}
 		entries = append(entries, entry)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate watch entries: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: iterate watch entries: %w", apperrors.ErrDB, err)
 	}
 	return entries, nil
 }
@@ -137,7 +137,7 @@ func (r *WatchEntryRepository) ListByMovieIDs(ctx context.Context, movieIDs []st
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("%w: list watch entries by movie ids: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: list watch entries by movie ids: %w", apperrors.ErrDB, err)
 	}
 	defer rows.Close()
 
@@ -145,12 +145,12 @@ func (r *WatchEntryRepository) ListByMovieIDs(ctx context.Context, movieIDs []st
 	for rows.Next() {
 		entry, err := scanWatchEntry(rows)
 		if err != nil {
-			return nil, fmt.Errorf("%w: scan watch entry: %v", apperrors.ErrDB, err)
+			return nil, fmt.Errorf("%w: scan watch entry: %w", apperrors.ErrDB, err)
 		}
 		entries = append(entries, entry)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: iterate watch entries: %v", apperrors.ErrDB, err)
+		return nil, fmt.Errorf("%w: iterate watch entries: %w", apperrors.ErrDB, err)
 	}
 	return entries, nil
 }
@@ -167,7 +167,7 @@ func (r *WatchEntryRepository) GetByMovieID(ctx context.Context, movieID string)
 		return domain.WatchEntry{}, fmt.Errorf("%w: movie id %s", apperrors.ErrWatchEntryNotFound, movieID)
 	}
 	if err != nil {
-		return domain.WatchEntry{}, fmt.Errorf("%w: get watch entry: %v", apperrors.ErrDB, err)
+		return domain.WatchEntry{}, fmt.Errorf("%w: get watch entry: %w", apperrors.ErrDB, err)
 	}
 
 	return entry, nil
@@ -176,12 +176,12 @@ func (r *WatchEntryRepository) GetByMovieID(ctx context.Context, movieID string)
 func (r *WatchEntryRepository) DeleteByMovieID(ctx context.Context, movieID string) error {
 	result, err := r.db.ExecContext(ctx, `DELETE FROM watch_entries WHERE movie_id = ?`, movieID)
 	if err != nil {
-		return fmt.Errorf("%w: delete watch entry: %v", apperrors.ErrDB, err)
+		return fmt.Errorf("%w: delete watch entry: %w", apperrors.ErrDB, err)
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%w: delete watch entry rows affected: %v", apperrors.ErrDB, err)
+		return fmt.Errorf("%w: delete watch entry rows affected: %w", apperrors.ErrDB, err)
 	}
 	if count == 0 {
 		return fmt.Errorf("%w: movie id %s", apperrors.ErrWatchEntryNotFound, movieID)

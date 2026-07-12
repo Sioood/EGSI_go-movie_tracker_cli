@@ -68,13 +68,13 @@ func (c *AuthClient) Refresh(ctx context.Context, refreshToken string) (service.
 func (c *AuthClient) Me(ctx context.Context, accessToken string) (UserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/api/me", nil)
 	if err != nil {
-		return UserInfo{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return UserInfo{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return UserInfo{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return UserInfo{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 
@@ -87,7 +87,7 @@ func (c *AuthClient) Me(ctx context.Context, accessToken string) (UserInfo, erro
 
 	var info UserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return UserInfo{}, fmt.Errorf("%w: decode response: %v", apperrors.ErrNetwork, err)
+		return UserInfo{}, fmt.Errorf("%w: decode response: %w", apperrors.ErrNetwork, err)
 	}
 	return info, nil
 }
@@ -100,13 +100,13 @@ func (c *AuthClient) postTokenPair(ctx context.Context, path string, body any) (
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+path, bytes.NewReader(data))
 	if err != nil {
-		return service.TokenPair{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return service.TokenPair{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return service.TokenPair{}, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return service.TokenPair{}, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 
@@ -125,7 +125,7 @@ func (c *AuthClient) postTokenPair(ctx context.Context, path string, body any) (
 
 	var pair service.TokenPair
 	if err := json.NewDecoder(resp.Body).Decode(&pair); err != nil {
-		return service.TokenPair{}, fmt.Errorf("%w: decode response: %v", apperrors.ErrNetwork, err)
+		return service.TokenPair{}, fmt.Errorf("%w: decode response: %w", apperrors.ErrNetwork, err)
 	}
 	return pair, nil
 }

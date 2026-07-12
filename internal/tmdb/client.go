@@ -75,13 +75,13 @@ func (c *Client) SearchMovies(ctx context.Context, query string, year int) ([]Se
 
 	resp, err := c.client().Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", apperrors.ErrNetwork, err)
+		return nil, fmt.Errorf("%w: %w", apperrors.ErrNetwork, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("%w: read tmdb response: %v", apperrors.ErrNetwork, err)
+		return nil, fmt.Errorf("%w: read tmdb response: %w", apperrors.ErrNetwork, err)
 	}
 
 	if resp.StatusCode >= 500 {

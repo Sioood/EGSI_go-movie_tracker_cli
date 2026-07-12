@@ -37,7 +37,7 @@ func (r *TMDBCacheRepository) Get(ctx context.Context, tmdbID int) (tmdb.SearchR
 		if err == sql.ErrNoRows {
 			return tmdb.SearchResult{}, false, nil
 		}
-		return tmdb.SearchResult{}, false, fmt.Errorf("%w: get tmdb cache: %v", apperrors.ErrDB, err)
+		return tmdb.SearchResult{}, false, fmt.Errorf("%w: get tmdb cache: %w", apperrors.ErrDB, err)
 	}
 
 	fetched, err := parseTime(fetchedAt)
@@ -74,7 +74,7 @@ func (r *TMDBCacheRepository) Put(ctx context.Context, result tmdb.SearchResult)
 			fetched_at = excluded.fetched_at
 	`, result.ID, string(data), formatTime(payload.FetchedAt))
 	if err != nil {
-		return fmt.Errorf("%w: put tmdb cache: %v", apperrors.ErrDB, err)
+		return fmt.Errorf("%w: put tmdb cache: %w", apperrors.ErrDB, err)
 	}
 	return nil
 }

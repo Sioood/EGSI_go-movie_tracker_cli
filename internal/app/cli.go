@@ -149,12 +149,14 @@ func RunCLI() error {
 			current.AccessToken = access
 			current.RefreshToken = refresh
 			runtime.session.Store(current)
-			_ = config.SaveSession(config.Session{
+			if saveErr := config.SaveSession(config.Session{
 				AccessToken:  access,
 				RefreshToken: refresh,
 				ServerUserID: current.ServerUserID,
 				Email:        current.Email,
-			})
+			}); saveErr != nil {
+				logger.Warn("save refreshed session tokens", "err", saveErr)
+			}
 		},
 	)
 
