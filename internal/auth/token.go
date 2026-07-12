@@ -81,12 +81,6 @@ func parseTokenWithType(tokenStr string, secret []byte, wantType string) (*Claim
 	return claims, nil
 }
 
-// ParseToken validates the signature and expiry of a signed JWT and returns its claims.
-// Prefer ParseAccessToken or ParseRefreshToken for endpoint-specific validation.
-func ParseToken(tokenStr string, secret []byte) (*Claims, error) {
-	return parseToken(tokenStr, secret)
-}
-
 func parseToken(tokenStr string, secret []byte) (*Claims, error) {
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {

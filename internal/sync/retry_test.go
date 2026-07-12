@@ -61,7 +61,7 @@ func TestWithRetryStopsOnNonRetryableError(t *testing.T) {
 
 type timeoutError struct{}
 
-func (e *timeoutError) Error() string   { return "timeout" }
+func (e *timeoutError) Error() string { return "timeout" }
 func (e *timeoutError) Timeout() bool { return true }
 func (e *timeoutError) Temporary() bool {
 	return true

@@ -7,14 +7,6 @@ import (
 	"github.com/movietracker/movie-tracker/internal/tmdb"
 )
 
-type externalTMDBAdapter struct {
-	client *tmdb.Client
-}
-
-func (a *externalTMDBAdapter) SearchMovies(r *http.Request, query string, year int) ([]tmdb.SearchResult, error) {
-	return a.client.SearchMovies(r.Context(), query, year)
-}
-
 type externalHandler struct {
 	tmdb interface {
 		SearchMovies(r *http.Request, query string, year int) ([]tmdb.SearchResult, error)

@@ -50,8 +50,8 @@ func (b *backupAdapter) ExportSnapshot(ctx context.Context, accessToken string) 
 
 func (b *backupAdapter) ImportSnapshot(ctx context.Context, accessToken string, snapshot tui.BackupSnapshot) error {
 	return b.BackupClient.ImportSnapshot(ctx, accessToken, service.BackupSnapshot{
-		Config: snapshot.Config,
-		State:  snapshot.State,
+		Config:   snapshot.Config,
+		State:    snapshot.State,
 		SyncedAt: time.Now().UTC(),
 	})
 }

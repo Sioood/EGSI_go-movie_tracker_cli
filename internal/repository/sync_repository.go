@@ -22,10 +22,10 @@ const (
 
 // SyncMetadata holds global sync state for the client database.
 type SyncMetadata struct {
-	LastSyncAt      *time.Time
-	LastPushAt      *time.Time
-	LastPullAt      *time.Time
-	UserIDMigrated  bool
+	LastSyncAt     *time.Time
+	LastPushAt     *time.Time
+	LastPullAt     *time.Time
+	UserIDMigrated bool
 }
 
 // PendingChange is a local mutation waiting to be pushed.
@@ -36,8 +36,8 @@ type PendingChange struct {
 }
 
 type SyncRepository struct {
-	db     *sql.DB
-	movies *MovieRepository
+	db      *sql.DB
+	movies  *MovieRepository
 	entries *WatchEntryRepository
 }
 

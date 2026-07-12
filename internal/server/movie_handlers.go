@@ -15,8 +15,8 @@ type movieHandler struct {
 }
 
 type movieWithEntry struct {
-	Movie      domain.Movie        `json:"movie"`
-	WatchEntry *domain.WatchEntry  `json:"watch_entry"`
+	Movie      domain.Movie       `json:"movie"`
+	WatchEntry *domain.WatchEntry `json:"watch_entry"`
 }
 
 // GET /api/v1/movies?q=&filter=&sort=

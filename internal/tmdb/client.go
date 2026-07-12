@@ -96,11 +96,11 @@ func (c *Client) SearchMovies(ctx context.Context, query string, year int) ([]Se
 
 	var payload struct {
 		Results []struct {
-			ID              int    `json:"id"`
-			Title           string `json:"title"`
-			Overview        string `json:"overview"`
-			PosterPath      string `json:"poster_path"`
-			ReleaseDate     string `json:"release_date"`
+			ID          int    `json:"id"`
+			Title       string `json:"title"`
+			Overview    string `json:"overview"`
+			PosterPath  string `json:"poster_path"`
+			ReleaseDate string `json:"release_date"`
 		} `json:"results"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {

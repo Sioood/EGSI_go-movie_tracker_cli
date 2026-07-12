@@ -2,7 +2,6 @@ package messages
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/movietracker/movie-tracker/internal/apperrors"
@@ -93,9 +92,4 @@ func mapInvalidRating(err error) string {
 		return "Échelle de notation invalide."
 	}
 	return "Note invalide."
-}
-
-// Prefix formats an error with a French prefix.
-func Prefix(prefix string, err error) string {
-	return fmt.Sprintf("%s %s", prefix, UserMessage(err))
 }

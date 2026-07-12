@@ -80,14 +80,14 @@ type Stats struct {
 }
 
 type SyncConflict struct {
-	ID             string    `json:"id"`
-	EntityType     string    `json:"entity_type"`
-	EntityID       string    `json:"entity_id"`
-	LocalJSON      string    `json:"local_json"`
-	RemoteJSON     string    `json:"remote_json"`
-	LocalDeviceID  string    `json:"local_device_id"`
-	RemoteDeviceID string    `json:"remote_device_id"`
-	DetectedAt     time.Time `json:"detected_at"`
+	ID             string     `json:"id"`
+	EntityType     string     `json:"entity_type"`
+	EntityID       string     `json:"entity_id"`
+	LocalJSON      string     `json:"local_json"`
+	RemoteJSON     string     `json:"remote_json"`
+	LocalDeviceID  string     `json:"local_device_id"`
+	RemoteDeviceID string     `json:"remote_device_id"`
+	DetectedAt     time.Time  `json:"detected_at"`
 	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
 }
 

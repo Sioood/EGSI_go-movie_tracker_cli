@@ -90,4 +90,3 @@ func NewRouter(svcs Services, jwtSecret []byte) http.Handler {
 
 	return mux
 }
-

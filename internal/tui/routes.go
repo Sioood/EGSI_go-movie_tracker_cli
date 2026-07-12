@@ -3,15 +3,15 @@ package tui
 type Route string
 
 const (
-	RouteSplash      Route = "splash"
-	RouteMainMenu    Route = "main_menu"
-	RouteMovieList   Route = "movie_list"
-	RouteMovieForm   Route = "movie_form"
-	RouteMovieDetail Route = "movie_detail"
-	RouteStats       Route = "stats"
-	RouteSettings    Route = "settings"
-	RouteLogin       Route = "login"
-	RouteRegister    Route = "register"
+	RouteSplash        Route = "splash"
+	RouteMainMenu      Route = "main_menu"
+	RouteMovieList     Route = "movie_list"
+	RouteMovieForm     Route = "movie_form"
+	RouteMovieDetail   Route = "movie_detail"
+	RouteStats         Route = "stats"
+	RouteSettings      Route = "settings"
+	RouteLogin         Route = "login"
+	RouteRegister      Route = "register"
 	RouteHelp          Route = "help"
 	RouteSyncConflicts Route = "sync_conflicts"
 )

@@ -36,9 +36,9 @@ type SyncTrigger interface {
 
 // HybridClient writes locally, marks pending changes, and optionally triggers sync.
 type HybridClient struct {
-	local    MovieReader
-	stats    StatsReader
-	sync     SyncTrigger
+	local       MovieReader
+	stats       StatsReader
+	sync        SyncTrigger
 	userID      func(context.Context) (string, error)
 	getDeviceID func() string
 	online      func() bool

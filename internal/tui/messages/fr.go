@@ -16,12 +16,12 @@ var UI = struct {
 	StatusDisconnected string
 
 	// Sync footer
-	SyncOffline   string
-	SyncSyncing   string
-	SyncError     string
-	SyncPending   string
-	SyncUpToDate  string
-	SyncReady     string
+	SyncOffline      string
+	SyncSyncing      string
+	SyncError        string
+	SyncPending      string
+	SyncUpToDate     string
+	SyncReady        string
 	SyncPendingFmt   string
 	SyncConflictsFmt string
 
@@ -42,20 +42,20 @@ var UI = struct {
 	SplashEnter   string
 
 	// Movies list
-	MoviesTitle           string
-	SearchLabel           string
-	FilterSortHint        string
-	EmptyMovies           string
-	EmptySearch           string
-	AddMovieHint          string
-	MovieFormHint         string
-	MovieDetailHint       string
-	SettingsHint          string
-	LoginHint             string
-	RegisterHint          string
-	LoginLoading          string
-	RegisterLoading       string
-	LoginNoAccount        string
+	MoviesTitle     string
+	SearchLabel     string
+	FilterSortHint  string
+	EmptyMovies     string
+	EmptySearch     string
+	AddMovieHint    string
+	MovieFormHint   string
+	MovieDetailHint string
+	SettingsHint    string
+	LoginHint       string
+	RegisterHint    string
+	LoginLoading    string
+	RegisterLoading string
+	LoginNoAccount  string
 
 	// Forms
 	AddMovieTitle    string
@@ -69,37 +69,37 @@ var UI = struct {
 	WatchedNo        string
 
 	// Settings
-	SettingsTitle       string
-	ThemeLabel          string
-	ServerURLLabel      string
-	OfflineDisabled     string
-	OfflineEnabled      string
-	OfflineToggleHint   string
-	ConnectedHintFmt    string
-	BackupHint          string
-	ExportHint          string
-	BackupExportOK      string
-	BackupImportOK      string
-	BackupNeedAuth      string
-	BackupUnavailable   string
-	BackupExporting     string
-	BackupImporting     string
+	SettingsTitle        string
+	ThemeLabel           string
+	ServerURLLabel       string
+	OfflineDisabled      string
+	OfflineEnabled       string
+	OfflineToggleHint    string
+	ConnectedHintFmt     string
+	BackupHint           string
+	ExportHint           string
+	BackupExportOK       string
+	BackupImportOK       string
+	BackupNeedAuth       string
+	BackupUnavailable    string
+	BackupExporting      string
+	BackupImporting      string
 	BackupLocalExportFmt string
-	MoviesExportFmt     string
-	ExportUnavailable   string
-	ThemeChangedFmt     string
+	MoviesExportFmt      string
+	ExportUnavailable    string
+	ThemeChangedFmt      string
 
 	// Stats
-	StatsTitle          string
-	StatsTotalMovies    string
-	StatsTotalWatched   string
-	StatsTotalRated     string
-	StatsAverageRating  string
-	StatsBestMovies     string
-	StatsWorstMovies    string
-	StatsByMonth        string
-	StatsEmptyHint      string
-	StatsRatingFmt      string
+	StatsTitle         string
+	StatsTotalMovies   string
+	StatsTotalWatched  string
+	StatsTotalRated    string
+	StatsAverageRating string
+	StatsBestMovies    string
+	StatsWorstMovies   string
+	StatsByMonth       string
+	StatsEmptyHint     string
+	StatsRatingFmt     string
 
 	// Auth screens
 	LoginTitle    string
@@ -112,57 +112,57 @@ var UI = struct {
 	MenuTitle string
 
 	// Actions / feedback
-	FilterFmt              string
-	SortFmt                string
-	FiltersReset           string
-	MovieDeleted           string
-	MovieAddedFmt          string
-	DetailSaved            string
-	WatchedToday           string
-	Unwatched              string
-	SettingsSaved          string
-	LoggedOut              string
-	ConnectedAsFmt         string
-	AccountCreatedFmt      string
-	SessionRestoredFmt     string
-	ThemeEmpty             string
-	ServerURLEmpty         string
-	SaveFailedFmt          string
-	AuthClientUnavailable  string
-	PasswordMismatch       string
+	FilterFmt               string
+	SortFmt                 string
+	FiltersReset            string
+	MovieDeleted            string
+	MovieAddedFmt           string
+	DetailSaved             string
+	WatchedToday            string
+	Unwatched               string
+	SettingsSaved           string
+	LoggedOut               string
+	ConnectedAsFmt          string
+	AccountCreatedFmt       string
+	SessionRestoredFmt      string
+	ThemeEmpty              string
+	ServerURLEmpty          string
+	SaveFailedFmt           string
+	AuthClientUnavailable   string
+	PasswordMismatch        string
 	MovieServiceUnavailable string
-	NoMovieSelected        string
-	LoadFailedFmt          string
-	StatusIncompleteFmt    string
-	StatsUnavailableFmt    string
-	DeleteFailedFmt        string
+	NoMovieSelected         string
+	LoadFailedFmt           string
+	StatusIncompleteFmt     string
+	StatsUnavailableFmt     string
+	DeleteFailedFmt         string
 
 	// Placeholders
-	ThemePlaceholder     string
-	ServerURLPlaceholder string
-	EmailPlaceholder     string
-	PasswordPlaceholder  string
-	ConfirmPlaceholder   string
-	TitlePlaceholder     string
-	YearPlaceholder      string
-	SearchPlaceholder    string
-	RatingPlaceholder    string
-	DatePlaceholder      string
-	ReviewPlaceholder    string
+	ThemePlaceholder      string
+	ServerURLPlaceholder  string
+	EmailPlaceholder      string
+	PasswordPlaceholder   string
+	ConfirmPlaceholder    string
+	TitlePlaceholder      string
+	YearPlaceholder       string
+	SearchPlaceholder     string
+	RatingPlaceholder     string
+	DatePlaceholder       string
+	ReviewPlaceholder     string
 	TMDBSearchPlaceholder string
 
 	// TMDB
-	TMDBSearchTitle      string
-	TMDBSearchLabel      string
-	TMDBResultsTitle     string
-	TMDBSearchHint       string
-	TMDBResultsHint      string
-	TMDBSearching        string
-	TMDBNoResults        string
-	TMDBQueryTooShort    string
-	TMDBUnavailable      string
-	TMDBSelectedFmt      string
-	ExternalIDFmt        string
+	TMDBSearchTitle   string
+	TMDBSearchLabel   string
+	TMDBResultsTitle  string
+	TMDBSearchHint    string
+	TMDBResultsHint   string
+	TMDBSearching     string
+	TMDBNoResults     string
+	TMDBQueryTooShort string
+	TMDBUnavailable   string
+	TMDBSelectedFmt   string
+	ExternalIDFmt     string
 
 	// Conflicts
 	ConflictTitle            string
@@ -240,12 +240,12 @@ var UI = struct {
 	WatchedYes:       "oui",
 	WatchedNo:        "non",
 
-	SettingsTitle:     "Paramètres",
-	ThemeLabel:        "Thème",
-	ServerURLLabel:    "URL serveur",
-	OfflineDisabled:   "désactivé",
-	OfflineEnabled:    "activé",
-	OfflineToggleHint: "Mode hors ligne : %s (o pour basculer)",
+	SettingsTitle:        "Paramètres",
+	ThemeLabel:           "Thème",
+	ServerURLLabel:       "URL serveur",
+	OfflineDisabled:      "désactivé",
+	OfflineEnabled:       "activé",
+	OfflineToggleHint:    "Mode hors ligne : %s (o pour basculer)",
 	ConnectedHintFmt:     "Connecté : %s (d pour déconnecter)",
 	BackupHint:           "Backup : e → serveur | i ← serveur | E → fichiers locaux",
 	ExportHint:           "Export films : j → JSON | J → CSV",
@@ -304,45 +304,45 @@ var UI = struct {
 	StatsUnavailableFmt:     "Stats indisponibles : %s",
 	DeleteFailedFmt:         "Suppression impossible : %s",
 
-	ThemePlaceholder:     "midnight",
-	ServerURLPlaceholder: "http://localhost:8080",
-	EmailPlaceholder:     "vous@example.com",
-	PasswordPlaceholder:  "mot de passe",
-	ConfirmPlaceholder:   "confirmer",
-	TitlePlaceholder:     "Titre du film",
-	YearPlaceholder:      "2026",
-	SearchPlaceholder:    "Rechercher un titre...",
-	RatingPlaceholder:    "8.5",
-	DatePlaceholder:      "YYYY-MM-DD",
+	ThemePlaceholder:      "midnight",
+	ServerURLPlaceholder:  "http://localhost:8080",
+	EmailPlaceholder:      "vous@example.com",
+	PasswordPlaceholder:   "mot de passe",
+	ConfirmPlaceholder:    "confirmer",
+	TitlePlaceholder:      "Titre du film",
+	YearPlaceholder:       "2026",
+	SearchPlaceholder:     "Rechercher un titre...",
+	RatingPlaceholder:     "8.5",
+	DatePlaceholder:       "YYYY-MM-DD",
 	ReviewPlaceholder:     "Votre critique...",
 	TMDBSearchPlaceholder: "Rechercher sur TMDB...",
 
-	TMDBSearchTitle:     "Recherche TMDB",
-	TMDBSearchLabel:     "Titre du film",
-	TMDBResultsTitle:    "Résultats TMDB",
-	TMDBSearchHint:      "Saisis un titre puis Entrée pour chercher. Esc pour revenir au formulaire.",
-	TMDBResultsHint:     "↑/↓ sélectionner un résultat, Entrée pour confirmer.",
-	TMDBSearching:       "Recherche TMDB en cours...",
-	TMDBNoResults:       "Aucun résultat TMDB pour cette recherche.",
-	TMDBQueryTooShort:   "Saisis au moins 2 caractères pour chercher.",
-	TMDBUnavailable:     "Recherche TMDB indisponible (connexion ou clé API).",
-	TMDBSelectedFmt:     "Film sélectionné : %s",
-	ExternalIDFmt:         "Référence externe : %s",
+	TMDBSearchTitle:   "Recherche TMDB",
+	TMDBSearchLabel:   "Titre du film",
+	TMDBResultsTitle:  "Résultats TMDB",
+	TMDBSearchHint:    "Saisis un titre puis Entrée pour chercher. Esc pour revenir au formulaire.",
+	TMDBResultsHint:   "↑/↓ sélectionner un résultat, Entrée pour confirmer.",
+	TMDBSearching:     "Recherche TMDB en cours...",
+	TMDBNoResults:     "Aucun résultat TMDB pour cette recherche.",
+	TMDBQueryTooShort: "Saisis au moins 2 caractères pour chercher.",
+	TMDBUnavailable:   "Recherche TMDB indisponible (connexion ou clé API).",
+	TMDBSelectedFmt:   "Film sélectionné : %s",
+	ExternalIDFmt:     "Référence externe : %s",
 
-	ConflictTitle:           "Conflits de synchronisation",
-	ConflictScreenHint:      "Choisis la version à conserver pour chaque conflit.",
-	ConflictListHint:        "Conflit en attente",
-	ConflictEmpty:           "Aucun conflit de synchronisation.",
-	ConflictResolved:        "Conflit résolu.",
-	ConflictMovieFmt:        "Film : %s",
-	ConflictWatchFmt:        "Suivi : %s",
-	ConflictGenericFmt:      "%s · %s",
-	ConflictChoiceFmt:       "Sélection : %s",
-	ConflictLocalLabel:      "Version locale",
-	ConflictRemoteLabel:     "Version distante",
-	ConflictLocalPreviewFmt: "Local (%s) : %s",
-	ConflictRemotePreviewFmt:"Distant (%s) : %s",
-	ConflictNoPreview:       "aucun détail",
+	ConflictTitle:            "Conflits de synchronisation",
+	ConflictScreenHint:       "Choisis la version à conserver pour chaque conflit.",
+	ConflictListHint:         "Conflit en attente",
+	ConflictEmpty:            "Aucun conflit de synchronisation.",
+	ConflictResolved:         "Conflit résolu.",
+	ConflictMovieFmt:         "Film : %s",
+	ConflictWatchFmt:         "Suivi : %s",
+	ConflictGenericFmt:       "%s · %s",
+	ConflictChoiceFmt:        "Sélection : %s",
+	ConflictLocalLabel:       "Version locale",
+	ConflictRemoteLabel:      "Version distante",
+	ConflictLocalPreviewFmt:  "Local (%s) : %s",
+	ConflictRemotePreviewFmt: "Distant (%s) : %s",
+	ConflictNoPreview:        "aucun détail",
 
 	StatusUnwatched: "non vu",
 

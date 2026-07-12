@@ -186,8 +186,6 @@ func (m *Model) refreshConflictCount() {
 	}
 }
 
-type conflictResolvedMsg struct{}
-
 func (m Model) openConflicts() (tea.Model, tea.Cmd) {
 	if m.conflictCount == 0 {
 		m.setMessage(messages.KindInfo, messages.UI.ConflictEmpty)

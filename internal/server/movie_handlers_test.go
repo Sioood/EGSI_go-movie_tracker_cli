@@ -262,7 +262,9 @@ func TestWatchEntryInvalidDate(t *testing.T) {
 	token := registerAndLogin(t, router, "watchdate")
 
 	rr := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Test", "year": 2020})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr.Body).Decode(&created)
 
 	rr2 := authPut(t, router, "/api/v1/movies/"+created.Movie.ID+"/watch", token, map[string]any{
@@ -293,7 +295,9 @@ func TestStatsEndpoint(t *testing.T) {
 
 	// Add a movie and watch it
 	rr2 := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Heat", "year": 1995})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr2.Body).Decode(&created)
 
 	rating := 8.0
@@ -346,7 +350,9 @@ func TestSyncRoundtrip(t *testing.T) {
 	// Create two movies + one watch entry on the server.
 	rr1 := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Film A", "year": 2020})
 	rr2 := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Film B", "year": 2021})
-	var mA, mB struct{ Movie domain.Movie `json:"movie"` }
+	var mA, mB struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr1.Body).Decode(&mA)
 	json.NewDecoder(rr2.Body).Decode(&mB)
 
@@ -396,7 +402,9 @@ func TestSyncImportRejectsOtherUsersMovies(t *testing.T) {
 
 	// User A creates a movie.
 	rr := authPost(t, router, "/api/v1/movies", tokenA, map[string]any{"title": "A Movie", "year": 2020})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr.Body).Decode(&created)
 
 	// User B tries to sync a watch entry for user A's movie.
@@ -423,7 +431,9 @@ func TestSyncDeleteMovies(t *testing.T) {
 	token := registerAndLogin(t, router, "syncdel")
 
 	rr := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "To Delete", "year": 2020})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr.Body).Decode(&created)
 
 	rrImport := authPost(t, router, "/api/v1/sync", token, map[string]any{
@@ -446,7 +456,9 @@ func TestSyncImportLWWSkipsStaleMovie(t *testing.T) {
 	token := registerAndLogin(t, router, "synclww")
 
 	rr := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Current", "year": 2020})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr.Body).Decode(&created)
 
 	stale := created.Movie
@@ -462,7 +474,9 @@ func TestSyncImportLWWSkipsStaleMovie(t *testing.T) {
 	}
 
 	rrGet := authGet(t, router, "/api/v1/movies/"+created.Movie.ID, token)
-	var payload struct{ Movie domain.Movie `json:"movie"` }
+	var payload struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rrGet.Body).Decode(&payload)
 	if payload.Movie.Title != "Current" {
 		t.Fatalf("stale import should not overwrite title, got %q", payload.Movie.Title)
@@ -485,7 +499,9 @@ func TestMovieListFilterAndSort(t *testing.T) {
 
 	authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Zulu", "year": 2020})
 	rrB := authPost(t, router, "/api/v1/movies", token, map[string]any{"title": "Alpha", "year": 2021})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rrB.Body).Decode(&created)
 
 	authPut(t, router, "/api/v1/movies/"+created.Movie.ID+"/watch", token, map[string]any{
@@ -530,7 +546,9 @@ func TestMovieForbiddenCrossUserUpdate(t *testing.T) {
 	tokenB := registerAndLogin(t, router, "updB")
 
 	rr := authPost(t, router, "/api/v1/movies", tokenA, map[string]any{"title": "Owned", "year": 2020})
-	var created struct{ Movie domain.Movie `json:"movie"` }
+	var created struct {
+		Movie domain.Movie `json:"movie"`
+	}
 	json.NewDecoder(rr.Body).Decode(&created)
 
 	rrPut := authPut(t, router, "/api/v1/movies/"+created.Movie.ID, tokenB, map[string]any{

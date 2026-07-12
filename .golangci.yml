@@ -10,6 +10,9 @@ linters:
     - unused
     - bodyclose
     - misspell
+    - gofmt
+    - goimports
+    - ineffassign
 
 linters-settings:
   govet:

@@ -16,8 +16,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Check formatting
+        run: make fmt-check
+
+      - name: Run go vet
+        run: make vet
+
       - name: Run tests
         run: make test
 
       - name: Run golangci-lint
         run: make lint
+
+      - name: Check dead code
+        run: make deadcode
