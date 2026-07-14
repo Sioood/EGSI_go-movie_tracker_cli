@@ -1,4 +1,4 @@
-.PHONY: build test test-race cover cover-check fmt fmt-check vet lint deadcode check run-cli run-server tidy docker-up docker-down
+.PHONY: build test test-race cover cover-check fmt fmt-check vet lint deadcode check run-cli run-server ensure-env-local tidy docker-up docker-down
 .PHONY: build-linux build-windows build-darwin release-snapshot
 
 VERSION ?= $(shell grep 'Version =' internal/version/version.go | cut -d'"' -f2)
@@ -70,10 +70,16 @@ define run_with_env
 	$(1)
 endef
 
-run-cli: build
+ensure-env-local:
+	@if [ ! -f .env.local ] && [ -f .env.local.example ]; then \
+		cp .env.local.example .env.local; \
+		echo "Créé .env.local depuis .env.local.example"; \
+	fi
+
+run-cli: build ensure-env-local
 	$(call run_with_env,./bin/movietracker)
 
-run-server: build
+run-server: build ensure-env-local
 	$(call run_with_env,./bin/movietracker-server)
 
 tidy:
