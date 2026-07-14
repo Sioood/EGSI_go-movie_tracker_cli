@@ -61,11 +61,20 @@ deadcode:
 
 check: fmt-check vet test test-race lint deadcode
 
+# Charge .env puis .env.local (prioritaire) avant d'exécuter une commande
+define run_with_env
+	set -a; \
+	[ -f .env ] && . ./.env; \
+	[ -f .env.local ] && . ./.env.local; \
+	set +a; \
+	$(1)
+endef
+
 run-cli: build
-	./bin/movietracker
+	$(call run_with_env,./bin/movietracker)
 
 run-server: build
-	./bin/movietracker-server
+	$(call run_with_env,./bin/movietracker-server)
 
 tidy:
 	go mod tidy

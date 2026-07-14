@@ -38,8 +38,9 @@ Les scénarios TUI interactifs ci-dessous restent **manuels** (nécessitent `mak
 
 ```bash
 make check        # recommandé avant toute session E2E
-make build
-export JWT_SECRET="test-secret-e2e-min-32-chars-long"
+cp .env.example .env
+cp .env.local.example .env.local
+# Éditer JWT_SECRET dans .env (min. 32 caractères)
 make run-server   # terminal 1
 make run-cli      # terminal 2
 ```

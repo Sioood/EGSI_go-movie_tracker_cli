@@ -104,8 +104,8 @@ Chaque appareil reçoit un `device_id` persistant dans `config.json`. Les confli
 ### Local
 
 ```bash
-export JWT_SECRET="votre-secret-long-et-aleatoire"
-export TMDB_API_KEY="votre-token-tmdb"   # optionnel, active GET /api/v1/search/external
+cp .env.example .env          # JWT_SECRET, TMDB_API_KEY, etc.
+cp .env.local.example .env.local   # DB_PATH local
 make run-server
 ```
 
