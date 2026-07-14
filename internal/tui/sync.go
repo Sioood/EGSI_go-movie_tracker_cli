@@ -61,7 +61,7 @@ func (b *ProgramSyncBridge) Bind(program *tea.Program) {
 // Request triggers a sync cycle in the TUI.
 func (b *ProgramSyncBridge) Request() {
 	if b.program != nil {
-		b.program.Send(SyncRequestMsg{})
+		go b.program.Send(SyncRequestMsg{})
 	}
 }
 
