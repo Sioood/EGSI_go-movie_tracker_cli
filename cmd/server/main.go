@@ -31,11 +31,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := os.MkdirAll("data", 0o755); err != nil {
-		logger.Error("create data directory", "err", err)
-		os.Exit(1)
-	}
-
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "data/server.db"
