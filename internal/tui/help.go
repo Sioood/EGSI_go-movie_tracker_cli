@@ -58,7 +58,7 @@ var helpSections = []HelpSection{
 		Title: "Compte",
 		Shortcuts: []Shortcut{
 			{Keys: "l", Action: "ouvrir la connexion"},
-			{Keys: "r", Action: "passer à l'inscription", Screens: []Route{RouteLogin}},
+			{Keys: "ctrl+r", Action: "passer à l'inscription", Screens: []Route{RouteLogin}},
 			{Keys: "s", Action: "ouvrir les paramètres"},
 			{Keys: "o", Action: "basculer le mode hors ligne", Screens: []Route{RouteSettings}},
 			{Keys: "d", Action: "se déconnecter", Screens: []Route{RouteSettings}},

@@ -131,13 +131,14 @@ func TestTypingShortcutLettersInMovieFormDoesNotNavigate(t *testing.T) {
 	model = press(t, model, "a")
 	assertRoute(t, model, RouteMovieForm)
 
+	model = press(t, model, "t")
 	model = press(t, model, "m")
 	model = press(t, model, "q")
 	model = press(t, model, "s")
 	model = press(t, model, "l")
 
 	assertRoute(t, model, RouteMovieForm)
-	if model.titleInput.Value() != "mqsl" {
+	if model.titleInput.Value() != "tmqsl" {
 		t.Fatalf("expected shortcut letters to be typed, got %q", model.titleInput.Value())
 	}
 }
@@ -181,6 +182,12 @@ func TestRegisterNavigation(t *testing.T) {
 	model := testNewModel(newFakeMovieService())
 	model.goTo(RouteLogin)
 	model = press(t, model, "r")
+	assertRoute(t, model, RouteLogin)
+	if model.emailInput.Value() != "r" {
+		t.Fatalf("expected r typed in email field, got %q", model.emailInput.Value())
+	}
+
+	model = press(t, model, "ctrl+r")
 	assertRoute(t, model, RouteRegister)
 	model = press(t, model, "esc")
 	assertRoute(t, model, RouteLogin)
@@ -236,6 +243,23 @@ func TestSettingsThemeCycle(t *testing.T) {
 	model = press(t, model, "right")
 	if model.state.Config.Theme != "solar" {
 		t.Fatalf("expected solar theme after right, got %s", model.state.Config.Theme)
+	}
+}
+
+func TestShortcutLettersInServerURLInputDoNotTriggerActions(t *testing.T) {
+	model := testNewModel(newFakeMovieService())
+	model.goTo(RouteSettings)
+	model.settingsFocus = 1
+	model.serverURLInput.SetValue("")
+	model.focusSettings()
+
+	for _, key := range []string{"l", "o", "d", "e", "i", "j"} {
+		model = press(t, model, key)
+	}
+
+	assertRoute(t, model, RouteSettings)
+	if model.serverURLInput.Value() != "lodeij" {
+		t.Fatalf("expected shortcut letters typed in URL field, got %q", model.serverURLInput.Value())
 	}
 }
 
@@ -313,6 +337,8 @@ func keyMsg(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyEnter}
 	case "esc":
 		return tea.KeyMsg{Type: tea.KeyEsc}
+	case "ctrl+r":
+		return tea.KeyMsg{Type: tea.KeyCtrlR}
 	default:
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
 	}

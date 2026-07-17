@@ -527,10 +527,6 @@ func (m Model) updateMovieForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+t":
 		return m.enterTMDBSearch()
-	case "t":
-		if strings.TrimSpace(m.titleInput.Value()) == "" {
-			return m.enterTMDBSearch()
-		}
 	case "tab", "shift+tab":
 		m.formFocus = (m.formFocus + 1) % 2
 		m.focusMovieForm()
@@ -560,6 +556,12 @@ func (m Model) updateMovieForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.backupLoading {
 		return m, nil
+	}
+
+	if m.settingsFocus == 1 && msg.String() != "tab" && msg.String() != "shift+tab" && msg.String() != "enter" && msg.String() != "ctrl+s" {
+		var cmd tea.Cmd
+		m.serverURLInput, cmd = m.serverURLInput.Update(msg)
+		return m, cmd
 	}
 
 	switch msg.String() {
@@ -641,11 +643,6 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.saveSettings()
 	}
 
-	if m.settingsFocus == 1 {
-		var cmd tea.Cmd
-		m.serverURLInput, cmd = m.serverURLInput.Update(msg)
-		return m, cmd
-	}
 	return m, nil
 }
 
@@ -680,7 +677,7 @@ func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.loginFocus = (m.loginFocus + 1) % 2
 		m.focusLogin()
 		return m, nil
-	case "r":
+	case "ctrl+r":
 		if m.state.Session.Authenticated {
 			m.setMessage(messages.KindInfo, messages.UI.LoginActiveHint)
 			return m, nil

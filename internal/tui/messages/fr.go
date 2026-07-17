@@ -209,7 +209,7 @@ var UI = struct {
 	FooterMovieDetail: "tab champ suivant • w vu aujourd'hui • u non vu • entrée enregistrer • esc liste",
 	FooterStats:       "m menu • s paramètres • l connexion • S sync • ? aide • q quitter",
 	FooterSettings:    "←/→ thème • tab champ • o hors ligne • e export serveur • i import serveur • E export local • j/J films JSON/CSV • entrée enregistrer • esc menu • q quitter",
-	FooterLogin:       "tab champ suivant • entrée connexion • r inscription • esc menu • q quitter",
+	FooterLogin:       "tab champ suivant • entrée connexion • ctrl+r inscription • esc menu • q quitter",
 	FooterRegister:    "tab champ suivant • entrée inscription • esc connexion • q quitter",
 
 	SplashWelcome: "Bienvenue dans MovieTracker",
@@ -229,7 +229,7 @@ var UI = struct {
 	RegisterHint:    "Crée un compte sur le serveur MovieTracker.",
 	LoginLoading:    "Connexion en cours...",
 	RegisterLoading: "Inscription en cours...",
-	LoginNoAccount:  "Pas de compte ? Appuie sur r pour t'inscrire.",
+	LoginNoAccount:  "Pas de compte ? Appuie sur Ctrl+R pour t'inscrire.",
 	LoginActiveHint: "Tu es déjà connecté. Appuie sur d pour te déconnecter.",
 
 	AddMovieTitle:    "Ajouter un film",
