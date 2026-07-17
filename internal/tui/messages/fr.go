@@ -56,6 +56,7 @@ var UI = struct {
 	LoginLoading    string
 	RegisterLoading string
 	LoginNoAccount  string
+	LoginActiveHint string
 
 	// Forms
 	AddMovieTitle    string
@@ -229,6 +230,7 @@ var UI = struct {
 	LoginLoading:    "Connexion en cours...",
 	RegisterLoading: "Inscription en cours...",
 	LoginNoAccount:  "Pas de compte ? Appuie sur r pour t'inscrire.",
+	LoginActiveHint: "Tu es déjà connecté. Appuie sur d pour te déconnecter.",
 
 	AddMovieTitle:    "Ajouter un film",
 	TitleLabel:       "Titre",

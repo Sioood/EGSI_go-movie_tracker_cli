@@ -186,6 +186,45 @@ func TestRegisterNavigation(t *testing.T) {
 	assertRoute(t, model, RouteLogin)
 }
 
+func TestLoginScreenWhenAuthenticatedOnlyAllowsLogout(t *testing.T) {
+	auth := &fakeAuthClient{}
+	var cleared bool
+	model := testNewModelWithAuth(newFakeMovieService(), auth, nil)
+	model.clearSession = func() error {
+		cleared = true
+		return nil
+	}
+	model.state.Session = SessionState{
+		AccessToken:   "access",
+		RefreshToken:  "refresh",
+		ServerUserID:  "user-1",
+		Email:         "alice@example.com",
+		Authenticated: true,
+	}
+	model.goTo(RouteLogin)
+
+	model = press(t, model, "r")
+	assertRoute(t, model, RouteLogin)
+	if model.state.Session.Authenticated == false {
+		t.Fatal("expected r not to logout")
+	}
+
+	model = press(t, model, "enter")
+	assertRoute(t, model, RouteLogin)
+	if auth.loginCalls != 0 {
+		t.Fatalf("expected no login call while authenticated, got %d", auth.loginCalls)
+	}
+
+	model = press(t, model, "d")
+	assertRoute(t, model, RouteLogin)
+	if model.state.Session.Authenticated {
+		t.Fatal("expected session cleared after d")
+	}
+	if !cleared {
+		t.Fatal("expected persisted session cleared")
+	}
+}
+
 func TestSettingsThemeCycle(t *testing.T) {
 	model := testNewModel(newFakeMovieService())
 	model.goTo(RouteSettings)
@@ -225,9 +264,10 @@ func testNewModelWithAuth(store MovieClient, auth AuthClient, saveSession func(S
 }
 
 type fakeAuthClient struct {
-	pair service.TokenPair
-	user UserInfo
-	err  error
+	pair       service.TokenPair
+	user       UserInfo
+	err        error
+	loginCalls int
 }
 
 func (f *fakeAuthClient) Register(ctx context.Context, email, password string) (service.TokenPair, error) {
@@ -238,6 +278,7 @@ func (f *fakeAuthClient) Register(ctx context.Context, email, password string) (
 }
 
 func (f *fakeAuthClient) Login(ctx context.Context, email, password string) (service.TokenPair, error) {
+	f.loginCalls++
 	if f.err != nil {
 		return service.TokenPair{}, f.err
 	}

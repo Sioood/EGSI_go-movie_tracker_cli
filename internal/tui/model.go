@@ -594,14 +594,7 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "d":
 		if m.state.Session.Authenticated {
-			m.state.Session = SessionState{}
-			if m.clearSession != nil {
-				logPersistError("clear session", m.clearSession())
-			}
-			m.syncStatus = SyncStatusIdle
-			m.syncError = ""
-			m.pendingCount = 0
-			m.setMessage(messages.KindSuccess, messages.UI.LoggedOut)
+			m.logout()
 		}
 		return m, nil
 	case "e":
@@ -688,9 +681,23 @@ func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusLogin()
 		return m, nil
 	case "r":
+		if m.state.Session.Authenticated {
+			m.setMessage(messages.KindInfo, messages.UI.LoginActiveHint)
+			return m, nil
+		}
 		m.goTo(RouteRegister)
 		return m, nil
+	case "d":
+		if m.state.Session.Authenticated {
+			m.logout()
+			return m, nil
+		}
+		return m, nil
 	case "enter":
+		if m.state.Session.Authenticated {
+			m.setMessage(messages.KindInfo, messages.UI.LoginActiveHint)
+			return m, nil
+		}
 		if m.loginFocus < 1 {
 			m.loginFocus++
 			m.focusLogin()
@@ -718,6 +725,18 @@ func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.passwordInput, cmd = m.passwordInput.Update(msg)
 	}
 	return m, cmd
+}
+
+func (m *Model) logout() {
+	m.state.Session = SessionState{}
+	if m.clearSession != nil {
+		logPersistError("clear session", m.clearSession())
+	}
+	m.syncStatus = SyncStatusIdle
+	m.syncError = ""
+	m.pendingCount = 0
+	m.conflictCount = 0
+	m.setMessage(messages.KindSuccess, messages.UI.LoggedOut)
 }
 
 func (m Model) updateRegister(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

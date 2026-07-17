@@ -363,6 +363,28 @@ func (m Model) settingsView() string {
 
 func (m Model) loginView() string {
 	s := m.styles
+	if m.state.Session.Authenticated {
+		email := m.state.Session.Email
+		if email == "" {
+			email = messages.UI.StatusOnlineSuffix
+		}
+		message := m.message
+		kind := m.messageKind
+		if message == "" {
+			message = messages.UI.LoginActiveHint
+			kind = messages.KindInfo
+		}
+		return s.Panel.Render(strings.Join([]string{
+			s.Active.Render(messages.UI.LoginTitle),
+			"",
+			fmt.Sprintf(messages.UI.ConnectedAsFmt, email),
+			"",
+			s.Subtle.Render(messages.UI.LoginActiveHint),
+			"",
+			m.statusLine(kind, message),
+		}, "\n"))
+	}
+
 	message := m.message
 	kind := m.messageKind
 	if message == "" {
