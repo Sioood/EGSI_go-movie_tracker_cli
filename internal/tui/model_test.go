@@ -193,6 +193,38 @@ func TestRegisterNavigation(t *testing.T) {
 	assertRoute(t, model, RouteLogin)
 }
 
+func TestTypingShortcutLettersInAuthInputsDoesNotNavigate(t *testing.T) {
+	model := testNewModel(newFakeMovieService())
+	model.goTo(RouteLogin)
+
+	for _, key := range []string{"q", "p", "r", "d"} {
+		model = press(t, model, key)
+	}
+
+	assertRoute(t, model, RouteLogin)
+	if model.emailInput.Value() != "qprd" {
+		t.Fatalf("expected shortcut letters typed in login email field, got %q", model.emailInput.Value())
+	}
+
+	model = press(t, model, "tab")
+	for _, key := range []string{"q", "p", "r", "d"} {
+		model = press(t, model, key)
+	}
+	if model.passwordInput.Value() != "qprd" {
+		t.Fatalf("expected shortcut letters typed in login password field, got %q", model.passwordInput.Value())
+	}
+
+	model.goTo(RouteRegister)
+	for _, key := range []string{"q", "p", "r", "d"} {
+		model = press(t, model, key)
+	}
+
+	assertRoute(t, model, RouteRegister)
+	if model.emailInput.Value() != "qprd" {
+		t.Fatalf("expected shortcut letters typed in register email field, got %q", model.emailInput.Value())
+	}
+}
+
 func TestLoginScreenWhenAuthenticatedOnlyAllowsLogout(t *testing.T) {
 	auth := &fakeAuthClient{}
 	var cleared bool

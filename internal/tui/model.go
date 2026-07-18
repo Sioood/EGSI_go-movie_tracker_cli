@@ -672,29 +672,25 @@ func (m Model) updateLogin(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.state.Session.Authenticated {
+		switch msg.String() {
+		case "ctrl+r", "enter":
+			m.setMessage(messages.KindInfo, messages.UI.LoginActiveHint)
+		case "d":
+			m.logout()
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "tab", "shift+tab":
 		m.loginFocus = (m.loginFocus + 1) % 2
 		m.focusLogin()
 		return m, nil
 	case "ctrl+r":
-		if m.state.Session.Authenticated {
-			m.setMessage(messages.KindInfo, messages.UI.LoginActiveHint)
-			return m, nil
-		}
 		m.goTo(RouteRegister)
 		return m, nil
-	case "d":
-		if m.state.Session.Authenticated {
-			m.logout()
-			return m, nil
-		}
-		return m, nil
 	case "enter":
-		if m.state.Session.Authenticated {
-			m.setMessage(messages.KindInfo, messages.UI.LoginActiveHint)
-			return m, nil
-		}
 		if m.loginFocus < 1 {
 			m.loginFocus++
 			m.focusLogin()
